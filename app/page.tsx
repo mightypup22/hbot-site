@@ -39,7 +39,6 @@ function SplineHero({ url, layout = "inline" }: { url: string; layout?: "inline"
 
   const defineCheck = useCallback(() => {
     try {
-      // @ts-expect-error -- Spline custom element not in TS DOM typings
       const defined =
       typeof window !== "undefined" &&
       "customElements" in window &&
@@ -111,7 +110,7 @@ function SplineHero({ url, layout = "inline" }: { url: string; layout?: "inline"
     <div className={isBg ? "absolute inset-0" : "relative"}>
       <div className={isBg ? "absolute inset-0 overflow-visible" : "relative w-full min-h-[340px] h-[50vh] md:h-[60vh] xl:h-[70vh] overflow-visible"}>
         {ready ? (
-          // @ts-expect-error -- Spline custom element is not in TS DOM typings
+          // @ts-expect-error -- Spline Custom Element ist nicht Teil der DOM-Typen
           <spline-viewer
             url={url}
             loading="eager"
@@ -181,7 +180,6 @@ export default function HBOTPraxisBerlin() {
 
   useEffect(() => {
     const update = () => {
-      // @ts-expect-error -- Spline custom element not in TS DOM typings
       const defined = typeof window !== "undefined" && !!window.customElements?.get("spline-viewer");
       const script = !!document.getElementById("spline-viewer-script");
       const online = typeof navigator !== "undefined" ? navigator.onLine : true;
