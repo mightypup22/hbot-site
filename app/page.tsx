@@ -149,6 +149,47 @@ function SplineHero({ url, layout = "inline" }: { url: string; layout?: "inline"
 }
 
 export default function HBOTPraxisBerlin() {
+
+  const [submitting, setSubmitting] = useState(false);
+  const [submitMsg, setSubmitMsg] = useState<null | { type: "ok" | "err"; text: string }>(null);
+
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setSubmitting(true);
+    setSubmitMsg(null);
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+    const payload = {
+      name: String(formData.get("name") || ""),
+      email: String(formData.get("email") || ""),
+      phone: String(formData.get("phone") || ""),
+      startWeek: String(formData.get("startWeek") || ""),
+      message: String(formData.get("message") || ""),
+      consent: formData.get("consent") === "on",
+      company: String(formData.get("company") || ""),
+    };
+
+    try {
+      const res = await fetch("/api/reservierung", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (res.ok && json.ok) {
+        setSubmitMsg({ type: "ok", text: "Danke! Wir haben Ihre Reservierung erhalten und melden uns zeitnah." });
+        form.reset();
+      } else {
+        const msg = json?.error || "Senden fehlgeschlagen. Bitte versuchen Sie es später erneut.";
+        setSubmitMsg({ type: "err", text: msg });
+      }
+    } catch {
+      setSubmitMsg({ type: "err", text: "Netzwerkfehler. Bitte später erneut versuchen." });
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   // Lightweight diagnostics for the hero component + simple UI tests
   const [diag, setDiag] = useState({
     online: true,
@@ -460,40 +501,59 @@ export default function HBOTPraxisBerlin() {
       <section id="kontakt" className="max-w-3xl mx-auto px-4 py-16 border-t border-slate-200">
         <h2 className="display text-3xl font-bold">Unverbindlich reservieren</h2>
         <p className="mt-3 text-slate-600">Sichern Sie sich den Early-Bird-Vorteil. Wir melden uns zur Eignungsklärung und Terminplanung.</p>
-        <form className="mt-8 grid gap-4">
+        <form onSubmit={onSubmit} className="mt-8 grid gap-4">
+          {/* Honeypot (unsichtbar für Menschen) */}
+          <div className="hidden" aria-hidden="true">
+            <label>
+              Firma
+              <input name="company" autoComplete="off" tabIndex={-1} />
+            </label>
+          </div>
+
           <div className="grid md:grid-cols-2 gap-4">
             <label className="grid gap-1 text-sm">
               <span>Vor- und Nachname</span>
-              <input required placeholder="Max Mustermann" className="border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-300" />
+              <input name="name" required placeholder="Max Mustermann" className="border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-300" />
             </label>
             <label className="grid gap-1 text-sm">
               <span>E-Mail</span>
-              <input type="email" required placeholder="max@example.com" className="border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-300" />
+              <input name="email" type="email" required placeholder="max@example.com" className="border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-300" />
             </label>
           </div>
           <div className="grid md:grid-cols-2 gap-4">
             <label className="grid gap-1 text-sm">
               <span>Telefon</span>
-              <input type="tel" placeholder="0151 23456789" className="border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-300" />
+              <input name="phone" type="tel" placeholder="0151 23456789" className="border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-300" />
             </label>
             <label className="grid gap-1 text-sm">
               <span>Wunschtermin (Startwoche)</span>
-              <input type="week" min="2026-W01" className="border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-300" />
+              <input name="startWeek" type="week" min="2026-W01" className="border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-300" />
             </label>
           </div>
           <label className="grid gap-1 text-sm">
             <span>Ihre Ziele / Hinweise</span>
-            <textarea rows={4} placeholder="Z. B. Kognition, Performance, Haut, Schlaf, …" className="border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-300" />
+            <textarea name="message" rows={4} placeholder="Z. B. Kognition, Performance, Haut, Schlaf, …" className="border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-300" />
           </label>
           <div className="flex items-center gap-3 text-sm">
-            <input id="agbs" type="checkbox" className="h-4 w-4" />
+            <input id="agbs" name="consent" type="checkbox" className="h-4 w-4" required />
             <label htmlFor="agbs">
               Ich akzeptiere die <Link href="/agb" className="underline">AGB</Link> & <Link href="/datenschutz" className="underline">Datenschutz</Link>.
             </label>
           </div>
-          <button type="submit" className="mt-2 w-full md:w-auto px-5 py-3 rounded-2xl btn-brand">Reservierung absenden</button>
+
+          <button type="submit" disabled={submitting} className="mt-2 w-full md:w-auto px-5 py-3 rounded-2xl btn-brand">
+            {submitting ? "Sende …" : "Reservierung absenden"}
+          </button>
+
+          {submitMsg && (
+            <p className={`text-sm mt-2 ${submitMsg.type === "ok" ? "text-emerald-700" : "text-rose-700"}`}>
+              {submitMsg.text}
+            </p>
+          )}
+
           <p className="text-xs text-slate-500">Mit dem Absenden stimmen Sie der Kontaktaufnahme per E-Mail/Telefon zu.</p>
         </form>
+
 
         {/* Debug/Diagnostics (acts like lightweight test cases) */}
         <details className="mt-8 text-xs text-slate-500">
