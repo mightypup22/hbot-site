@@ -1,102 +1,613 @@
-import Image from "next/image";
+"use client";
+import { useEffect, useState, useCallback } from "react";
 
-export default function Home() {
+function InfoIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true" {...props}>
+      <circle cx="10" cy="10" r="9" stroke="currentColor" fill="none" />
+      <circle cx="10" cy="6" r="1" fill="currentColor" />
+      <rect x="9" y="8.5" width="2" height="7" rx="1" fill="currentColor" />
+    </svg>
+  );
+}
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+function InfoTip({ label }: { label: string }) {
+  return (
+    <span className="relative inline-flex items-center group align-middle">
+      <button type="button" aria-label={label} className="text-slate-400 hover:text-slate-600 focus:text-slate-600 focus:outline-none">
+        <InfoIcon />
+      </button>
+      <span className="pointer-events-none absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity bg-slate-900 text-white text-xs px-3 py-2 rounded-xl shadow-xl max-w-[18rem] whitespace-pre-wrap">
+        {label}
+      </span>
+    </span>
+  );
+}
+
+/**
+ * Robust Spline wrapper that
+ * - loads the web component with type="module"
+ * - waits until it's defined before rendering
+ * - provides a graceful SVG fallback + retry
+ * - exposes lightweight diagnostics for debugging
+ */
+function SplineHero({ url, layout = "inline" }: { url: string; layout?: "inline" | "backgroundRight" }) {
+  const [ready, setReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const scriptId = "spline-viewer-script";
+
+  const defineCheck = useCallback(() => {
+    try {
+      // @ts-ignore
+      const defined = typeof window !== "undefined" && !!window.customElements?.get("spline-viewer");
+      return defined;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  const loadScript = useCallback((cacheBust = false) => {
+    if (typeof document === "undefined") return;
+    setError(null);
+
+    let script = document.getElementById(scriptId) as HTMLScriptElement | null;
+
+    const onLoad = () => {
+      requestAnimationFrame(() => {
+        if (defineCheck()) {
+          setReady(true);
+        } else {
+          setError("Spline component loaded, but not registered.");
+        }
+      });
+    };
+    const onError = () => setError("Failed to load Spline viewer script.");
+
+    if (!script) {
+      script = document.createElement("script");
+      script.id = scriptId;
+      script.type = "module"; // IMPORTANT for @splinetool/viewer
+      script.src = `https://unpkg.com/@splinetool/viewer@latest/build/spline-viewer.js${cacheBust ? `?v=${Date.now()}` : ""}`;
+      script.async = true;
+      script.addEventListener("load", onLoad);
+      script.addEventListener("error", onError);
+      document.head.appendChild(script);
+    } else {
+      if (defineCheck()) {
+        setReady(true);
+      } else {
+        script.addEventListener("load", onLoad, { once: true } as any);
+        script.addEventListener("error", onError, { once: true } as any);
+      }
+    }
+
+    return () => {
+      script?.removeEventListener("load", onLoad);
+      script?.removeEventListener("error", onError);
+    };
+  }, [defineCheck]);
+
+  useEffect(() => {
+    if (defineCheck()) {
+      setReady(true);
+      return;
+    }
+    const cleanup = loadScript(false);
+    return () => cleanup && cleanup();
+  }, [defineCheck, loadScript]);
+
+  const handleRetry = () => {
+    setReady(false);
+    loadScript(true);
+  };
+
+  const isBg = layout === "backgroundRight";
+
+  return (
+    <div className={isBg ? "absolute inset-0" : "relative"}>
+      <div className={isBg ? "absolute inset-0 overflow-visible" : "relative w-full min-h-[340px] h-[50vh] md:h-[60vh] xl:h-[70vh] overflow-visible"}>
+        {ready ? (
+          // @ts-ignore custom element
+          <spline-viewer
+            url={url}
+            loading="eager"
+            aria-label="Spline 3D Szene: Zellregeneration"
+            style={isBg ? { position: "absolute", top: "50%", left: "75%", transform: "translate(-50%, -50%)", width: "160vw", height: "120vh", display: "block", background: "transparent" } : { position: "absolute", inset: 0, width: "100%", height: "100%", display: "block", background: "transparent" }}
+          />
+        ) : (
+          // Graceful fallback: animated SVG
+          <svg viewBox="0 0 600 450" className="w-full h-full block">
+            <defs>
+              <linearGradient id="g1" x1="0" x2="1">
+                <stop offset="0%" stopColor="#94a3b8" />
+                <stop offset="100%" stopColor="#0f172a" />
+              </linearGradient>
+              <linearGradient id="g2" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stopColor="#e2e8f0" />
+                <stop offset="100%" stopColor="#94a3b8" />
+              </linearGradient>
+            </defs>
+            {[...Array(24)].map((_, i) => {
+              const x = 50 + i * 22;
+              return (
+                <g key={i}>
+                  <circle cx={x} cy={120 + Math.sin(i / 2) * 40} r={4} fill="url(#g1)">
+                    <animate attributeName="cy" values={`120;${120 + Math.sin((i + 4) / 2) * 40};120`} dur="6s" repeatCount="indefinite" />
+                  </circle>
+                  <circle cx={x} cy={300 + Math.cos(i / 2) * 40} r={4} fill="url(#g1)">
+                    <animate attributeName="cy" values={`300;${300 + Math.cos((i + 4) / 2) * 40};300`} dur="6s" repeatCount="indefinite" />
+                  </circle>
+                  <line x1={x} y1={120 + Math.sin(i / 2) * 40} x2={x} y2={300 + Math.cos(i / 2) * 40} stroke="url(#g2)" strokeWidth="1" opacity="0.6" />
+                </g>
+              );
+            })}
+            {[...Array(20)].map((_, i) => {
+              const delay = i * 0.6;
+              const size = 3 + (i % 5);
+              return (
+                <circle key={i} cx={80 + ((i * 25) % 440)} cy={420} r={size} fill="#94a3b8" opacity="0.6">
+                  <animate attributeName="cy" from="420" to="20" dur={`${7 + (i % 5)}s`} begin={`${delay}s`} repeatCount="indefinite" />
+                  <animate attributeName="opacity" values="0.2;0.8;0.2" dur="6s" begin={`${delay}s`} repeatCount="indefinite" />
+                </circle>
+              );
+            })}
+          </svg>
+        )}
+      </div>
+      {!ready && !isBg && (
+        <div className="absolute inset-x-0 bottom-2 mx-auto w-fit text-xs bg-white/60 backdrop-blur px-3 py-1 text-slate-600 shadow-sm">
+          Lädt 3D‑Szene … {error ? <span className="text-rose-600">{error}</span> : null} <button onClick={handleRetry} className="underline ml-2">Erneut versuchen</button>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
+      )}
+    </div>
+  );
+}
+
+export default function HBOTPraxisBerlin() {
+  const [mobileOpen, setMobileOpen] = useState(false);
+  // Lightweight diagnostics for the hero component + simple UI tests
+  const [diag, setDiag] = useState({ online: true, script: false, defined: false, tests: [] as { name: string; pass: boolean }[] });
+  useEffect(() => {
+    const onResize = () => {
+      if (window.innerWidth >= 768) setMobileOpen(false);
+    };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  useEffect(() => {
+    const update = () => {
+      // @ts-ignore
+      const defined = typeof window !== "undefined" && !!window.customElements?.get("spline-viewer");
+      const script = !!document.getElementById("spline-viewer-script");
+      const online = typeof navigator !== "undefined" ? navigator.onLine : true;
+
+      // Lightweight "test cases"
+      const tests: { name: string; pass: boolean }[] = [];
+      tests.push({ name: "Hero zeigt alten & neuen Preis (Durchstreichung)", pass: !!document.querySelector("dl span.line-through") && !!document.querySelector("dl span.font-extrabold") });
+      tests.push({ name: "EARLY‑BIRD Box sichtbar", pass: !!document.querySelector("#preise .bg-emerald-50") });
+      tests.push({ name: "Biomarker‑Abschnitt vorhanden", pass: !!document.getElementById("biomarker") });
+      tests.push({ name: "Evidenz‑Links ≥ 4 vorhanden", pass: document.querySelectorAll("#evidenz a[href^='https']").length >= 4 });
+      tests.push({ name: "Spline‑Viewer geladen/definiert oder Fallback aktiv", pass: defined || !!document.querySelector("svg > defs") });
+
+      setDiag({ online, script, defined, tests });
+    };
+    update();
+    const t = setInterval(update, 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-white text-slate-900" style={{fontFamily: 'var(--font-sans)'}}>
+      {/* Brand palette & Fonts */}
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700&display=swap');
+        :root{--brand:#0b1220;--ink:#0a0f1a;--accent:#c8a96e;--card:#fbfcfe;--ring:#d8dce5;--font-sans:"Plus Jakarta Sans",system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,"Noto Sans",sans-serif;--font-display:"Playfair Display",Georgia,serif}
+        .display{font-family:var(--font-display)}
+        .btn-brand{background:var(--brand);color:#fff}
+        .btn-brand:hover{filter:brightness(1.05)}
+        .chip{background:rgba(200,169,110,.12);border:1px solid rgba(200,169,110,.35)}
+        .navlink{position:relative;display:inline-block;padding-bottom:4px}
+        .navlink::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:var(--accent);transform:scaleX(0);transform-origin:center;transition:transform .25s ease}
+        .navlink:hover::after{transform:scaleX(1)}
+      `}</style>
+      {/* Top Bar */}
+      <header className="w-full border-b border-slate-200 sticky top-0 bg-white/80 backdrop-blur z-50">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-2xl bg-[var(--brand)] text-white grid place-items-center font-bold">H</div>
+            <div>
+              <p className="text-lg font-semibold leading-tight">HBOT Praxis Charlottenburg</p>
+              <p className="text-xs text-slate-500 -mt-1">Hyperbare Sauerstofftherapie – Premium-Programme</p>
+            </div>
+          </div>
+
+          {/* Desktop Nav */}
+          <nav className="hidden md:flex items-center gap-6 text-sm">
+            <a href="#programm" className="navlink hover:text-slate-700">Programm</a>
+            <a href="#philosophie" className="navlink hover:text-slate-700">Philosophie</a>
+            <a href="#evidenz" className="navlink hover:text-slate-700">Evidenz</a>
+            <a href="#preise" className="navlink hover:text-slate-700">Preis</a>
+            <a href="#kapazitaet" className="navlink hover:text-slate-700">Kapazität</a>
+            <a href="#kontakt" className="px-3 py-1.5 rounded-xl btn-brand">Reservieren</a>
+          </nav>
+
+          {/* Mobile Burger */}
+          <button aria-label="Menü öffnen" aria-expanded={mobileOpen} onClick={() => setMobileOpen(v=>!v)} className="md:hidden inline-flex items-center justify-center h-9 w-10 rounded-xl border border-slate-300">
+            <svg viewBox="0 0 24 24" width="20" height="20" className="text-slate-700">
+              <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          </button>
+        </div>
+        {/* Mobile Panel */}
+        <div className={`md:hidden border-t border-slate-200 bg-white ${mobileOpen ? 'block' : 'hidden'} min-h-[60vh]`}>
+          <nav className="px-4 py-6 text-sm w-full h-full grid place-items-center">
+            <div className="flex flex-col items-center gap-4">
+              <a onClick={()=>setMobileOpen(false)} href="#programm" className="py-2">Programm</a>
+              <a onClick={()=>setMobileOpen(false)} href="#philosophie" className="py-2">Philosophie</a>
+              <a onClick={()=>setMobileOpen(false)} href="#evidenz" className="py-2">Evidenz</a>
+              <a onClick={()=>setMobileOpen(false)} href="#preise" className="py-2">Preis</a>
+              <a onClick={()=>setMobileOpen(false)} href="#kapazitaet" className="py-2">Kapazität</a>
+              <a onClick={()=>setMobileOpen(false)} href="#kontakt" className="py-2 px-3 rounded-xl btn-brand w-fit">Reservieren</a>
+            </div>
+          </nav>
+        </div>
+      </header>
+
+      {/* Hero with robust Spline loader */}
+      <section className="relative overflow-visible min-h-screen flex items-center">
+        <div className="absolute inset-0 -z-10 bg-gradient-to-b from-slate-50 to-white" />
+        <div className="absolute inset-0 -z-10" style={{background:"radial-gradient(60% 60% at 30% 20%, rgba(200,169,110,0.10) 0%, rgba(200,169,110,0) 60%), radial-gradient(45% 45% at 90% 10%, rgba(15,23,42,0.07) 0%, rgba(15,23,42,0) 55%)"}} />
+        <div className="absolute inset-0 z-0"><SplineHero url="https://prod.spline.design/QAxlHsQhvGCBm7Ht/scene.splinecode" layout="backgroundRight" /></div>
+        <div className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-r from-white/85 via-white/55 to-transparent md:from-white/70 md:via-white/35" />
+        <div className="relative z-20 max-w-7xl mx-auto px-4 py-16 md:py-24 grid md:grid-cols-2 gap-10 items-center">
+          <div>
+            <h1 className="display text-4xl md:text-5xl font-bold tracking-tight">
+              Rejuvenation <span className="whitespace-nowrap">90 — Programm</span>
+            </h1>
+            <p className="mt-5 text-lg text-slate-600 leading-relaxed">
+              90 HBOT-Sitzungen in 3 Monaten in unserer Praxis in Berlin‑Charlottenburg.
+              Ziel: Telomer‑Längenerhalt/‑verlängerung und Förderung zellulärer Verjüngungsprozesse.
+              Premium-Betreuung mit täglichem Zugang <span className="whitespace-nowrap">(24 /7)</span> für optimale Integration.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <a href="#kontakt" className="px-5 py-3 rounded-2xl btn-brand">Early‑Bird reservieren</a>
+              <a href="#programm" className="px-5 py-3 rounded-2xl border border-slate-300 hover:bg-slate-50">Details ansehen</a>
+            </div>
+            <dl className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 overflow-hidden">
+                <dt className="text-slate-500 flex items-center gap-1">Sitzung</dt>
+                <dd className="font-semibold break-words whitespace-normal leading-snug">90 Min mit 100% Sauerstoff</dd>
+              </div>
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 overflow-hidden">
+                <dt className="text-slate-500 flex items-center gap-1">Anzahl</dt>
+                <dd className="font-semibold break-words whitespace-normal leading-snug">90 Sitzungen in 3 Monaten</dd>
+              </div>
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 overflow-hidden">
+                <dt className="text-slate-500 flex items-center gap-1">Zugang</dt>
+                <dd className="font-semibold break-words whitespace-normal leading-snug">24/7</dd>
+              </div>
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 overflow-hidden">
+                <dt className="text-slate-500 flex items-center gap-1">Preis</dt>
+                <dd className="font-semibold break-words whitespace-normal leading-snug"><span className="line-through text-slate-400 mr-2">4.999 €</span><br/><span className="font-extrabold">4.499 €</span></dd>
+              </div>
+            </dl>
+            <p className="mt-4 text-xs text-slate-500">Hinweis: Keine ärztliche Beratung/Heilversprechen. Individuelle Eignung erforderlich.</p>
+          </div>
+
+          <div className="hidden md:block" />
+        </div>
+      </section>
+
+      {/* Programm */}
+      <section id="programm" className="max-w-7xl mx-auto px-4 py-16">
+        <h2 className="display text-3xl font-bold">Programmübersicht</h2>
+        <div className="mt-6 grid md:grid-cols-3 gap-6">
+          <div className="p-6 rounded-3xl border border-slate-200">
+            <h3 className="text-xl font-semibold">Struktur</h3>
+            <ul className="mt-3 space-y-2 text-sm text-slate-700">
+              <li>90 Sitzungen in 12–13 Wochen</li>
+              <li>Individuelles Tagesfenster, Zugang 24 /7</li>
+              <li>Persönliches Coaching & Begleitung</li>
+              <li>Biomarker-Messungen vor/nach dem Programm</li>
+            </ul>
+          </div>
+          <div className="p-6 rounded-3xl border border-slate-200">
+            <h3 className="text-xl font-semibold">Ziele</h3>
+            <ul className="mt-3 space-y-2 text-sm text-slate-700">
+              <li>Telomer‑Längenerhalt/‑verlängerung (biologischer Alternsmarker)</li>
+              <li>Reduktion seneszenter Zellmarker</li>
+              <li>Optimierung von Regeneration, Schlaf & kognitiver Leistungsfähigkeit</li>
+            </ul>
+          </div>
+          <div className="p-6 rounded-3xl border border-slate-200">
+            <h3 className="text-xl font-semibold">Ablauf</h3>
+            <ul className="mt-3 space-y-2 text-sm text-slate-700">
+              <li>Intake: Eignungscheck, Zieldefinition, Basis‑Biomarker</li>
+              <li>Durchführung: Betreute HBOT‑Protokolle</li>
+              <li>Review: Abschlussmessung & Ergebnisbesprechung</li>
+            </ul>
+          </div>
+        </div>
+        <p className="mt-4 text-xs text-slate-500">* Wissenschaftliche Grundlage siehe Abschnitt Evidenz. Ergebnisse können individuell variieren.</p>
+      </section>
+
+      {/* Philosophie */}
+      <section id="philosophie" className="max-w-7xl mx-auto px-4 py-16 border-t border-slate-200">
+        <h2 className="display text-3xl font-bold">Unsere Philosophie</h2>
+        <div className="mt-4 grid md:grid-cols-2 gap-6 text-slate-700 leading-relaxed">
+          <p>
+            Wir glauben an <strong>proaktive Gesundheitsvorsorge</strong>: Wer frühzeitig in Lebensstil und Prävention investiert, fördert
+            Gesundheit im Alter und kann Alterungsprozesse verlangsamen. Statt reaktiver Nachsorge setzen wir auf ein System, in dem
+            Sie <strong>selbstwirksam</strong> handeln – mit Stellschrauben wie Training, Ernährung, Schlaf, Erholung und Screening.
+          </p>
+          <p>
+            Unser Beitrag: eine der vielversprechendsten technologischen Anwendungen im Anti‑Aging‑Bereich <span className="whitespace-nowrap">(HBOT)</span>
+            in einem <strong>Premium‑Setting</strong>. Wir kombinieren strukturierte Protokolle mit Coaching und objektiven Biomarkern,
+            um Fortschritte messbar zu machen – transparent und wissenschaftsnah.
+          </p>
+        </div>
+      </section>
+
+      {/* Evidenz & Publikationen */}
+      <section id="evidenz" className="max-w-7xl mx-auto px-4 py-16 border-t border-slate-200">
+        <h2 className="display text-3xl font-bold">Evidenz & Publikationen (Auswahl)</h2>
+        <div className="mt-6 grid md:grid-cols-2 gap-6">
+          <article className="p-6 rounded-3xl border border-slate-200">
+            <h3 className="font-semibold">Telomere & Seneszenz</h3>
+            <p className="mt-2 text-sm text-slate-700">Prospektive Studie: Zunahme Telomer‑Länge in Immunzellen und Abnahme seneszenter Marker nach HBOT‑Sitzungen bei älteren Erwachsenen.</p>
+            <a className="mt-3 inline-block text-sm underline" href="https://pubmed.ncbi.nlm.nih.gov/33206062/" target="_blank" rel="noreferrer">PubMed: Hachmo et al., 2020 (Aging)</a>
+          </article>
+          <article className="p-6 rounded-3xl border border-slate-200">
+            <h3 className="font-semibold">Haut & Kollagen</h3>
+            <p className="mt-2 text-sm text-slate-700">Biopsie‑basierte Daten: gesteigerte Kollagendichte, Angiogenese, Rückgang seneszenter Zellen nach HBOT bei gesunden Älteren.</p>
+            <a className="mt-3 inline-block text-sm underline" href="https://pubmed.ncbi.nlm.nih.gov/34784294/" target="_blank" rel="noreferrer">PubMed: Hachmo et al., 2021</a>
+          </article>
+          <article className="p-6 rounded-3xl border border-slate-200">
+            <h3 className="font-semibold">Körperliche Leistungsfähigkeit</h3>
+            <p className="mt-2 text-sm text-slate-700">Randomisierte, kontrollierte Studie: signifikante Zuwächse bei VO₂max, VO₂AT & Power in Master‑Athlet:innen; Hinweise auf verbesserte mitochondriale Funktion.</p>
+            <a className="mt-3 inline-block text-sm underline" href="https://pubmed.ncbi.nlm.nih.gov/35133516/" target="_blank" rel="noreferrer">PubMed: Hadanny et al., 2022</a>
+          </article>
+          <article className="p-6 rounded-3xl border border-slate-200">
+            <h3 className="font-semibold">Gehirnfunktion & Perfusion</h3>
+            <p className="mt-2 text-sm text-slate-700">Randomisierte, kontrollierte Studie in gesunden älteren Erwachsenen: Verbesserungen in Aufmerksamkeit, Verarbeitungsgeschwindigkeit & Exekutivfunktionen; begleitende CBF‑Erhöhungen.</p>
+            <a className="mt-3 inline-block text-sm underline" href="https://pubmed.ncbi.nlm.nih.gov/32589613/" target="_blank" rel="noreferrer">PubMed: Hadanny et al., 2020</a>
+          </article>
+          <article className="p-6 rounded-3xl border border-slate-200">
+            <h3 className="font-semibold">Mikrobiom & Entzündung</h3>
+            <p className="mt-2 text-sm text-slate-700">Human‑Daten aus IBD‑Kohorten und translationalen Analysen deuten auf eine Modulation des Darmmikrobioms und entzündlicher Pfade unter HBOT hin.</p>
+            <a className="mt-3 inline-block text-sm underline" href="https://pmc.ncbi.nlm.nih.gov/articles/PMC9117812/" target="_blank" rel="noreferrer">Gonzalez et al., 2022 (Host‑Microbe)</a>
+            <a className="ml-4 inline-block text-sm underline" href="https://pmc.ncbi.nlm.nih.gov/articles/PMC11137967/" target="_blank" rel="noreferrer">Li et al., 2024</a>
+          </article>
+          <article className="p-6 rounded-3xl border border-slate-200">
+            <h3 className="font-semibold">Immunmodulation</h3>
+            <p className="mt-2 text-sm text-slate-700">Klinische Hinweise auf veränderte Zytokinprofile bei Patient:innen; experimentell anti‑inflammatorische Effekte beobachtet (kontextabhängig).</p>
+            <a className="mt-3 inline-block text-sm underline" href="https://pmc.ncbi.nlm.nih.gov/articles/PMC7957267/" target="_blank" rel="noreferrer">Hedetoft et al., 2021 (NSTI)</a>
+            <a className="ml-4 inline-block text-sm underline" href="https://www.frontiersin.org/journals/physiology/articles/10.3389/fphys.2022.826163/full" target="_blank" rel="noreferrer">de Wolde et al., 2022</a>
+          </article>
+        </div>
+        <p className="mt-4 text-xs text-slate-500">Hinweis: Die Studienlage ist teils vorläufig/heterogen. Wir beraten transparent über Nutzen & Grenzen.</p>
+      </section>
+
+      {/* Biomarker */}
+      <section id="biomarker" className="max-w-7xl mx-auto px-4 py-16 border-t border-slate-200">
+        <h2 className="display text-3xl font-bold">Relevante Biomarker (vor & nach)</h2>
+        <p className="mt-3 text-slate-600 max-w-3xl">Auswahl je nach Ziel (Kognition, Performance, Haut, metabolisch). Wir kombinieren objektive Marker mit subjektiven Scores, um Fortschritte transparent zu machen.</p>
+        <div className="mt-8 grid md:grid-cols-2 xl:grid-cols-3 gap-6 text-sm">
+          <div className="p-6 rounded-3xl bg-[var(--card)] border border-slate-200 ring-1 ring-[var(--ring)]/50">
+            <h3 className="font-semibold">Biologisches Altern</h3>
+            <ul className="mt-3 space-y-2">
+              <li><strong>Telomerlänge (PBMC)</strong> — Marker zellulärer Seneszenz; relevant für Alterungsdynamik.</li>
+              <li><strong>Epigenetische Uhr (DNAm)</strong> — Schätzung biologischen Alters; sensitiv für Lifestyle‑Änderungen.</li>
+            </ul>
+          </div>
+          <div className="p-6 rounded-3xl bg-[var(--card)] border border-slate-200 ring-1 ring-[var(--ring)]/50">
+            <h3 className="font-semibold">Entzündung & Immun</h3>
+            <ul className="mt-3 space-y-2">
+              <li><strong>hs‑CRP, IL‑6, TNF‑α</strong> — systemische Entzündung; relevant für Regeneration & Alterung.</li>
+              <li><strong>Leukozyten‑Subsets/Seneszenzmarker</strong> — funktionelle Immunlage.</li>
+            </ul>
+          </div>
+          <div className="p-6 rounded-3xl bg-[var(--card)] border border-slate-200 ring-1 ring-[var(--ring)]/50">
+            <h3 className="font-semibold">Oxidativer Stress</h3>
+            <ul className="mt-3 space-y-2">
+              <li><strong>8‑OHdG, F2‑Isoprostane</strong> — oxidative Schäden; Balance aus Belastung/Adaptation.</li>
+              <li><strong>GSH/GSSG</strong> — antioxidative Kapazität.</li>
+            </ul>
+          </div>
+          <div className="p-6 rounded-3xl bg-[var(--card)] border border-slate-200 ring-1 ring-[var(--ring)]/50">
+            <h3 className="font-semibold">Kognition & Gehirn</h3>
+            <ul className="mt-3 space-y-2">
+              <li><strong>Kognitive Tests</strong> — Aufmerksamkeit, Exekutivfunktionen; optional digital.</li>
+              <li><strong>CBF/Perfusion (optional)</strong> — bildgebende Marker je nach Verfügbarkeit.</li>
+            </ul>
+          </div>
+          <div className="p-6 rounded-3xl bg-[var(--card)] border border-slate-200 ring-1 ring-[var(--ring)]/50">
+            <h3 className="font-semibold">Performance & Erholung</h3>
+            <ul className="mt-3 space-y-2">
+              <li><strong>VO₂max, VO₂AT</strong> — aerobe Kapazität; Leistungsfähigkeit.</li>
+              <li><strong>HRV, Schlafstadien</strong> — autonome Balance & Schlafqualität (Wearables).</li>
+            </ul>
+          </div>
+          <div className="p-6 rounded-3xl bg-[var(--card)] border border-slate-200 ring-1 ring-[var(--ring)]/50">
+            <h3 className="font-semibold">Haut & Gefäße</h3>
+            <ul className="mt-3 space-y-2">
+              <li><strong>Kollagen‑Dichte (High‑Res‑Ultraschall)</strong> — Gewebsstruktur & Elastizität.</li>
+              <li><strong>Mikrozirkulation (Laser‑Doppler)</strong> — lokale Durchblutung/Angiogenese.</li>
+            </ul>
+          </div>
+          <div className="p-6 rounded-3xl bg-[var(--card)] border border-slate-200 ring-1 ring-[var(--ring)]/50">
+            <h3 className="font-semibold">Metabolisch</h3>
+            <ul className="mt-3 space-y-2">
+              <li><strong>Nüchterninsulin, HOMA‑IR, HbA1c</strong> — Glukosestoffwechsel & Insulinsensitivität.</li>
+              <li><strong>Lipidprofil (ApoB, LDL‑P)</strong> — kardiometabolisches Risiko.</li>
+            </ul>
+          </div>
+          <div className="p-6 rounded-3xl bg-[var(--card)] border border-slate-200 ring-1 ring-[var(--ring)]/50">
+            <h3 className="font-semibold">Mikrobiom</h3>
+            <ul className="mt-3 space-y-2">
+              <li><strong>Stuhl‑Sequenzierung (16S/Shotgun)</strong> — Diversität & funktionelle Pfade.</li>
+              <li><strong>Entzündungsmarker im Stuhl</strong> — z. B. Calprotectin.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      {/* Preis & Angebot */}
+      <section id="preise" className="max-w-7xl mx-auto px-4 py-16 border-t border-slate-200">
+        <h2 className="display text-3xl font-bold">Preis & Reservierung</h2>
+        <div className="mt-8 grid md:grid-cols-3 gap-6">
+          <div className="p-6 rounded-3xl border border-slate-200">
+            <p className="text-sm text-slate-500">Programm</p>
+            <h3 className="text-2xl font-bold">Rejuvenation 90</h3>
+            <p className="mt-3 text-4xl font-bold">4.999 €</p>
+            <ul className="mt-4 space-y-2 text-sm">
+              <li className="flex gap-2 items-start"><span className="mt-1 h-1.5 w-1.5 rounded-full bg-[var(--brand)]"/> 90 Sitzungen in 3 Monaten </li>
+              <li className="flex gap-2 items-start"><span className="mt-1 h-1.5 w-1.5 rounded-full bg-[var(--brand)]"/> 24 /7 Zugang zur Praxis </li>
+              <li className="flex gap-2 items-start"><span className="mt-1 h-1.5 w-1.5 rounded-full bg-[var(--brand)]"/> Persönliches Coaching </li>
+              <li className="flex gap-2 items-start"><span className="mt-1 h-1.5 w-1.5 rounded-full bg-[var(--brand)]"/> Biomarker‑Messungen vor & nach </li>
+            </ul>
+            <div className="mt-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-sm">
+              <p className="font-medium">EARLY‑BIRD: −500 €</p>
+              <p className="text-emerald-700">Bei unverbindlicher Reservierung über das Formular.</p>
+            </div>
+            <a href="#kontakt" className="mt-6 inline-block px-4 py-2.5 rounded-xl btn-brand">Jetzt reservieren</a>
+          </div>
+
+          {/* Alternative Protokolle (moved & expanded) */}
+          <div className="p-6 rounded-3xl border border-slate-200 md:col-span-2">
+            <h4 className="font-semibold">Alternative Protokolle</h4>
+            <p className="mt-2 text-sm text-slate-700">Auf Anfrage passen wir Dauer, Frequenz und Schwerpunkte an. Preisgestaltung nach Umfang und Zielbild.</p>
+            <div className="mt-4 grid sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                <p className="text-slate-500">Beispiel</p>
+                <p className="font-medium">Neuro‑Kognition (8–12 Wochen)</p>
+                <p className="mt-1">Fokus auf CBF & kognitive Domänen; optional kognitive Aufgaben in‑Chamber.</p>
+              </div>
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                <p className="text-slate-500">Beispiel</p>
+                <p className="font-medium">Performance / Metabolisch (6–8 Wochen)</p>
+                <p className="mt-1">Trainingseinbindung, Monitoring von VO₂, Laktat & HRV.</p>
+              </div>
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                <p className="text-slate-500">Beispiel</p>
+                <p className="font-medium">Recovery & Schlaf (4–8 Wochen)</p>
+                <p className="mt-1">Schlafhygiene‑Coaching, Wearable‑Tracking, Erholungsziele.</p>
+              </div>
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                <p className="text-slate-500">Auf Anfrage</p>
+                <p className="font-medium">Individualisiert</p>
+                <p className="mt-1">Protokoll nach Zielbild und Eignung; interdisziplinäre Abstimmung.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Kapazität */}
+      <section id="kapazitaet" className="max-w-7xl mx-auto px-4 py-16 border-t border-slate-200">
+        <div className="p-6 rounded-3xl border border-slate-200 bg-slate-50">
+          <h2 className="display text-2xl font-bold">Begrenzte Plätze: Premium‑Betreuung</h2>
+          <p className="mt-2 text-slate-700">Wir nehmen pro Quartal maximal <strong>8 Kund:innen</strong> auf, um exklusive Betreuung, flexible Terminfenster und höchste Qualitätsstandards zu gewährleisten.</p>
+        </div>
+      </section>
+
+      {/* Kontakt / Reservierung */}
+      <section id="kontakt" className="max-w-3xl mx-auto px-4 py-16 border-t border-slate-200">
+        <h2 className="display text-3xl font-bold">Unverbindlich reservieren</h2>
+        <p className="mt-3 text-slate-600">Sichern Sie sich den Early‑Bird‑Vorteil. Wir melden uns zur Eignungsklärung und Terminplanung.</p>
+        <form className="mt-8 grid gap-4">
+          <div className="grid md:grid-cols-2 gap-4">
+            <label className="grid gap-1 text-sm">
+              <span>Vor- und Nachname</span>
+              <input required placeholder="Max Mustermann" className="border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-300" />
+            </label>
+            <label className="grid gap-1 text-sm">
+              <span>E‑Mail</span>
+              <input type="email" required placeholder="max@example.com" className="border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-300" />
+            </label>
+          </div>
+          <div className="grid md:grid-cols-2 gap-4">
+            <label className="grid gap-1 text-sm">
+              <span>Telefon</span>
+              <input type="tel" placeholder="0151 23456789" className="border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-300" />
+            </label>
+            <label className="grid gap-1 text-sm">
+              <span>Wunschtermin (Startwoche)</span>
+              <input type="week" min="2026-W01" className="border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-300" />
+            </label>
+          </div>
+          <label className="grid gap-1 text-sm">
+            <span>Ihre Ziele / Hinweise</span>
+            <textarea rows={4} placeholder="Z. B. Kognition, Performance, Haut, Schlaf, …" className="border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-300" />
+          </label>
+          <div className="flex items-center gap-3 text-sm">
+            <input id="agbs" type="checkbox" className="h-4 w-4" />
+            <label htmlFor="agbs">Ich akzeptiere die <a href="/agb" className="underline">AGB</a> & <a href="/datenschutz" className="underline">Datenschutz</a>.</label>
+          </div>
+          <button type="submit" className="mt-2 w-full md:w-auto px-5 py-3 rounded-2xl btn-brand">Reservierung absenden</button>
+          <p className="text-xs text-slate-500">Mit dem Absenden stimmen Sie der Kontaktaufnahme per E‑Mail/Telefon zu.</p>
+        </form>
+
+        {/* Debug/Diagnostics (acts like lightweight test cases) */}
+        <details className="mt-8 text-xs text-slate-500">
+          <summary className="cursor-pointer">Diagnose: Spline‑Integration & UI‑Tests</summary>
+          <ul className="mt-3 space-y-1">
+            <li>Online: <strong className={diag.online ? "text-emerald-600" : "text-rose-600"}>{String(diag.online)}</strong></li>
+            <li>Script vorhanden: <strong className={diag.script ? "text-emerald-600" : "text-rose-600"}>{String(diag.script)}</strong></li>
+            <li>Custom Element definiert: <strong className={diag.defined ? "text-emerald-600" : "text-rose-600"}>{String(diag.defined)}</strong></li>
+          </ul>
+          <div className="mt-3">
+            <p className="mb-1">Testfälle:</p>
+            <ul className="space-y-1">
+              {diag.tests.map((t, i) => (
+                <li key={i} className="flex items-center gap-2">
+                  <span className={`inline-flex items-center justify-center w-16 text-[10px] px-1 py-0.5 rounded ${t.pass ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>{t.pass ? 'PASS' : 'FAIL'}</span>
+                  <span>{t.name}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <p className="mt-2">Hinweis: Bei "FAIL" bitte im Hero auf „Erneut versuchen“ klicken (lädt Script mit Cache‑Buster) oder Seite neu laden.</p>
+        </details>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-slate-200 bg-slate-50">
+        <div className="max-w-7xl mx-auto px-4 py-12 grid md:grid-cols-3 gap-8">
+          <div>
+            <h3 className="font-semibold">Kontakt</h3>
+            <p className="mt-3 text-sm text-slate-600">
+              HBOT Praxis Charlottenburg<br/>
+              (genaue Adresse folgt)<br/>
+              Berlin‑Charlottenburg<br/>
+              Tel: 030 1234567<br/>
+              E‑Mail: hallo@hbot‑berlin.de
+            </p>
+          </div>
+          <div>
+            <h3 className="font-semibold">Links</h3>
+            <ul className="mt-3 space-y-2 text-sm">
+              <li><a href="#programm" className="hover:underline">Programm</a></li>
+              <li><a href="#philosophie" className="hover:underline">Philosophie</a></li>
+              <li><a href="#evidenz" className="hover:underline">Evidenz</a></li>
+              <li><a href="#preise" className="hover:underline">Preis</a></li>
+              <li><a href="#kontakt" className="hover:underline">Reservierung</a></li>
+            </ul>
+          </div>
+          <div id="rechtliches">
+            <h3 className="font-semibold">Rechtliches</h3>
+            <p className="mt-3 text-xs text-slate-600">
+              Diese Inhalte ersetzen keine medizinische Beratung. Kein Heilversprechen. Ergebnisse variieren. Bitte beachten Sie unser Impressum und unsere Datenschutzerklärung.
+            </p>
+            <div className="mt-3 flex gap-4 text-sm">
+              <a className="underline" href="/impressum">Impressum</a>
+              <a className="underline" href="/datenschutz">Datenschutz</a>
+              <a className="underline" href="/agb">AGB</a>
+            </div>
+          </div>
+        </div>
+        <div className="border-t border-slate-200 py-6 text-center text-xs text-slate-500">© {new Date().getFullYear()} HBOT Praxis Charlottenburg. Alle Rechte vorbehalten.</div>
       </footer>
     </div>
   );
