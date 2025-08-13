@@ -24,3 +24,27 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+:root{
+  --brand:#0b1220;
+  --ink:#0a0f1a;
+  --accent:#c8a96e;
+  --card:#fbfcfe;
+  --ring:#d8dce5;
+}
+
+/* Headline-Font-Utility */
+.display { font-family: var(--font-display) }
+
+/* Brand-Buttons */
+.btn-brand{ background: var(--brand); color: #fff; }
+.btn-brand:hover{ filter: brightness(1.05); }
+
+/* Dezente Premium-Unterstreichung beim Hover */
+.navlink{ position: relative; display: inline-block; padding-bottom: 4px; }
+.navlink::after{
+  content:""; position:absolute; left:0; right:0; bottom:0; height:2px;
+  background: var(--accent); transform: scaleX(0); transform-origin: center;
+  transition: transform .25s ease;
+}
+.navlink:hover::after{ transform: scaleX(1); }
