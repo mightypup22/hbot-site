@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export const metadata = {
   title: "Impressum – HBOT Praxis Charlottenburg",
   description:
@@ -9,10 +11,11 @@ export default function ImpressumPage() {
     <main className="min-h-screen bg-white">
       <div className="max-w-4xl mx-auto px-4 py-16">
         <nav className="text-sm text-slate-500">
-          <a href="/" className="hover:underline">Start</a>
+          <Link href="/" className="hover:underline">Start</Link>
           <span className="mx-2">/</span>
           <span>Impressum</span>
         </nav>
+
 
         <h1 className="mt-4 text-4xl font-bold tracking-tight">
           Impressum
@@ -80,9 +83,9 @@ export default function ImpressumPage() {
         </section>
 
         <div className="mt-10">
-          <a href="/" className="inline-block px-4 py-2 rounded-xl border border-slate-300 hover:bg-slate-50">
+          <Link href="/" className="inline-block px-4 py-2 rounded-xl border border-slate-300 hover:bg-slate-50">
             Zur Startseite
-          </a>
+          </Link>
         </div>
       </div>
     </main>

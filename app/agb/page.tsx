@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export const metadata = {
   title: "AGB – HBOT Praxis Charlottenburg",
   description:
@@ -9,10 +11,11 @@ export default function AGBPage() {
     <main className="min-h-screen bg-white">
       <div className="max-w-4xl mx-auto px-4 py-16">
         <nav className="text-sm text-slate-500">
-          <a href="/" className="hover:underline">Start</a>
+          <Link href="/" className="hover:underline">Start</Link>
           <span className="mx-2">/</span>
           <span>AGB</span>
         </nav>
+
 
         <h1 className="mt-4 text-4xl font-bold tracking-tight">
           Allgemeine Geschäftsbedingungen (AGB)
@@ -210,15 +213,15 @@ export default function AGBPage() {
         </section>
 
         <div className="mt-10 flex flex-wrap gap-3">
-          <a href="/" className="inline-block px-4 py-2 rounded-xl border border-slate-300 hover:bg-slate-50">
+          <Link href="/" className="inline-block px-4 py-2 rounded-xl border border-slate-300 hover:bg-slate-50">
             Zur Startseite
-          </a>
-          <a href="/impressum" className="inline-block px-4 py-2 rounded-xl border border-slate-300 hover:bg-slate-50">
+          </Link>
+          <Link href="/impressum" className="inline-block px-4 py-2 rounded-xl border border-slate-300 hover:bg-slate-50">
             Impressum
-          </a>
-          <a href="/datenschutz" className="inline-block px-4 py-2 rounded-xl border border-slate-300 hover:bg-slate-50">
+          </Link>
+          <Link href="/datenschutz" className="inline-block px-4 py-2 rounded-xl border border-slate-300 hover:bg-slate-50">
             Datenschutz
-          </a>
+          </Link>
         </div>
       </div>
     </main>
