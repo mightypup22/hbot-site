@@ -76,17 +76,38 @@ function escapeHtml(input: string) {
     .replaceAll("'", "&#39;");
 }
 
-// Fehler hübsch mappen
-function errorResponse(status: number, msg: string, issues?: any) {
-  // zod flatten => { fieldErrors, formErrors }
+// -------- Fehler hübsch mappen (ohne any)
+type FlattenError = {
+  fieldErrors?: Record<string, string[]>;
+  formErrors?: string[];
+};
+
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null;
+}
+function isStringArray(a: unknown): a is string[] {
+  return Array.isArray(a) && a.every((x) => typeof x === "string");
+}
+function isFlattenError(v: unknown): v is FlattenError {
+  if (!isRecord(v)) return false;
+  const fe = v["fieldErrors"];
+  const fo = v["formErrors"];
+  const feOk =
+    fe === undefined ||
+    (isRecord(fe) && Object.values(fe).every((arr) => isStringArray(arr)));
+  const foOk = fo === undefined || isStringArray(fo);
+  return feOk && foOk;
+}
+
+function errorResponse(status: number, msg: string, issues?: unknown) {
   const errors: Record<string, string> = { general: msg };
-  if (issues?.fieldErrors) {
-    for (const [k, v] of Object.entries(issues.fieldErrors as Record<string, string[]>)) {
-      if (v && v.length) errors[k] = v[0];
+  if (isFlattenError(issues)) {
+    for (const [k, arr] of Object.entries(issues.fieldErrors ?? {})) {
+      if (arr && arr.length) errors[k] = arr[0];
     }
-  }
-  if (issues?.formErrors && issues.formErrors.length) {
-    errors.general = issues.formErrors[0];
+    if (issues.formErrors && issues.formErrors.length) {
+      errors.general = issues.formErrors[0];
+    }
   }
   return NextResponse.json({ ok: false, error: msg, errors }, { status });
 }
