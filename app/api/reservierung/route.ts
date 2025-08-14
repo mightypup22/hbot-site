@@ -9,6 +9,7 @@ export const runtime = "nodejs";
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const RESERVATION_TO = process.env.RESERVATION_TO ?? "hallo@hbot-berlin.de";
 const RESERVATION_FROM = process.env.RESERVATION_FROM ?? "onboarding@resend.dev";
+const RESEND_FALLBACK_FROM = process.env.RESEND_FALLBACK_FROM ?? "onboarding@resend.dev";
 
 // --- Rate Limit: 5 req / 10 min / IP (in-memory)
 type Bucket = { first: number; count: number };
@@ -76,12 +77,11 @@ function escapeHtml(input: string) {
     .replaceAll("'", "&#39;");
 }
 
-// -------- Fehler hübsch mappen (ohne any)
+// -------- Fehler hübsch mappen (typisiert)
 type FlattenError = {
   fieldErrors?: Record<string, string[]>;
   formErrors?: string[];
 };
-
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null;
 }
@@ -98,7 +98,6 @@ function isFlattenError(v: unknown): v is FlattenError {
   const foOk = fo === undefined || isStringArray(fo);
   return feOk && foOk;
 }
-
 function errorResponse(status: number, msg: string, issues?: unknown) {
   const errors: Record<string, string> = { general: msg };
   if (isFlattenError(issues)) {
@@ -146,10 +145,16 @@ export async function POST(req: Request) {
     );
   }
 
-  // Mails aufbauen
-  const subjectAdmin = "Neue Reservierung – Rejuvenation 90";
-  const subjectUser = "Ihre Reservierung – HBOT Praxis Charlottenburg";
+  // Dry-Run lokal/ohne ENV
+  if (!RESEND_API_KEY) {
+    console.warn("[DRY-RUN] RESEND_API_KEY fehlt. E-Mails nicht gesendet.");
+    return NextResponse.json({ ok: true, queued: false, dryRun: true });
+  }
 
+  const resend = new Resend(RESEND_API_KEY);
+
+  // --- 1) Admin-Mail
+  const subjectAdmin = "Neue Reservierung – Rejuvenation 90";
   const htmlAdmin = `
     <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial">
       <h2>Neue Reservierung (Website)</h2>
@@ -164,6 +169,21 @@ export async function POST(req: Request) {
   `;
   const textAdmin = stripHtml(htmlAdmin);
 
+  const adminRes = await resend.emails.send({
+    from: RESERVATION_FROM,
+    to: [RESERVATION_TO],
+    replyTo: [email],
+    subject: subjectAdmin,
+    html: htmlAdmin,
+    text: textAdmin,
+  });
+  if (adminRes.error) {
+    console.error("Resend admin error:", adminRes.error);
+    return errorResponse(502, "Versand fehlgeschlagen. Bitte später erneut versuchen.");
+  }
+
+  // --- 2) Empfangsbestätigung an Nutzer
+  const subjectUser = "Empfangsbestätigung – HBOT Praxis Charlottenburg";
   const htmlUser = `
     <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;line-height:1.5">
       <h2 style="margin:0 0 8px 0">Vielen Dank für Ihre Reservierung</h2>
@@ -184,53 +204,57 @@ export async function POST(req: Request) {
   `;
   const textUser = stripHtml(htmlUser);
 
-  // Dry-Run lokal/ohne ENV
-  if (!RESEND_API_KEY) {
-    console.warn("[DRY-RUN] RESEND_API_KEY fehlt. E-Mails nicht gesendet.", { to: RESERVATION_TO, subjectAdmin });
-    return NextResponse.json({ ok: true, queued: false, dryRun: true });
-  }
+  let confirmQueued = false;
+  let confirmFallbackUsed = false;
 
   try {
-    const resend = new Resend(RESEND_API_KEY);
-
-    // 1) Mail an Praxis
-    const adminRes = await resend.emails.send({
+    const userRes = await resend.emails.send({
       from: RESERVATION_FROM,
-      to: [RESERVATION_TO],
-      replyTo: [email],
-      subject: subjectAdmin,
-      html: htmlAdmin,
-      text: textAdmin,
+      to: [email],
+      replyTo: [RESERVATION_TO],
+      subject: subjectUser,
+      html: htmlUser,
+      text: textUser,
     });
-    if (adminRes.error) {
-      console.error("Resend admin error:", adminRes.error);
-      return errorResponse(502, "Versand fehlgeschlagen. Bitte später erneut versuchen.");
-    }
-
-    // 2) Auto-Bestätigung an Nutzer (Fehler hier blockiert nicht)
-    let confirmQueued = false;
-    try {
-      const userRes = await resend.emails.send({
-        from: RESERVATION_FROM,
+    confirmQueued = !userRes.error;
+    if (userRes.error) {
+      console.error("Resend user confirmation error:", userRes.error);
+      // Fallback mit verlässlichem Absender
+      const fbRes = await resend.emails.send({
+        from: RESEND_FALLBACK_FROM,
         to: [email],
+        replyTo: [RESERVATION_TO],
         subject: subjectUser,
         html: htmlUser,
         text: textUser,
       });
-      confirmQueued = !userRes.error;
-      if (userRes.error) console.error("Resend user confirmation error:", userRes.error);
-    } catch (e) {
-      console.error("Confirmation send failed:", e);
+      confirmFallbackUsed = !fbRes.error;
+      if (fbRes.error) {
+        console.error("Resend user confirmation fallback error:", fbRes.error);
+      }
     }
-
-    return NextResponse.json({ ok: true, queued: true, confirmQueued, id: adminRes.data?.id });
-  } catch (err) {
-    console.error(err);
-    return errorResponse(500, "Interner Fehler. Bitte später erneut versuchen.");
+  } catch (e) {
+    console.error("Confirmation send failed:", e);
+    try {
+      const fbRes = await resend.emails.send({
+        from: RESEND_FALLBACK_FROM,
+        to: [email],
+        replyTo: [RESERVATION_TO],
+        subject: subjectUser,
+        html: htmlUser,
+        text: textUser,
+      });
+      confirmFallbackUsed = !fbRes.error;
+      if (fbRes.error) console.error("Resend user confirmation fallback error:", fbRes.error);
+    } catch (ee) {
+      console.error("Confirmation fallback threw:", ee);
+    }
   }
+
+  return NextResponse.json({ ok: true, queued: true, confirmQueued, confirmFallbackUsed, id: adminRes.data?.id });
 }
 
-// Optional: GET für schnellen Browser-Check (kannst du später löschen)
+// Optional: GET für schnellen Browser-Check
 export async function GET() {
   return NextResponse.json({ ok: true, route: "/api/reservierung" });
 }
