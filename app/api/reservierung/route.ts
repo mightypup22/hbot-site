@@ -5,13 +5,13 @@ import { z } from "zod";
 
 export const runtime = "nodejs";
 
-// --- ENV
+// ───────────────────────────── ENV
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const RESERVATION_TO = process.env.RESERVATION_TO ?? "hallo@hbot-berlin.de";
-const RESERVATION_FROM = process.env.RESERVATION_FROM ?? "onboarding@resend.dev";
-const RESEND_FALLBACK_FROM = process.env.RESEND_FALLBACK_FROM ?? "onboarding@resend.dev";
+const RESERVATION_FROM = process.env.RESERVATION_FROM ?? "onboarding@resend.dev"; // Admin-Mail-Absender
+const RESEND_FALLBACK_FROM = process.env.RESEND_FALLBACK_FROM ?? "onboarding@resend.dev"; // Nutzerbestätigung (sicher zustellbar)
 
-// --- Rate Limit: 5 req / 10 min / IP (in-memory)
+// ───────────────────────────── Rate Limit: 5 req / 10 min / IP (in-memory)
 type Bucket = { first: number; count: number };
 const buckets = new Map<string, Bucket>();
 const LIMIT = 5;
@@ -33,7 +33,7 @@ function ratelimit(ip: string): boolean {
   return true;
 }
 
-// --- Helpers
+// ───────────────────────────── Helpers
 const emptyToUndef = <T extends z.ZodTypeAny>(schema: T) =>
   z.preprocess((v) => (v === "" || v === null ? undefined : v), schema);
 
@@ -77,7 +77,7 @@ function escapeHtml(input: string) {
     .replaceAll("'", "&#39;");
 }
 
-// -------- Fehler hübsch mappen (typisiert)
+// ───────────────────────────── Fehler hübsch mappen (typisiert)
 type FlattenError = {
   fieldErrors?: Record<string, string[]>;
   formErrors?: string[];
@@ -111,7 +111,7 @@ function errorResponse(status: number, msg: string, issues?: unknown) {
   return NextResponse.json({ ok: false, error: msg, errors }, { status });
 }
 
-// --- Handlers
+// ───────────────────────────── Handlers
 export async function POST(req: Request) {
   const ip = ipFromHeaders(req);
   if (!ratelimit(ip)) {
@@ -153,7 +153,7 @@ export async function POST(req: Request) {
 
   const resend = new Resend(RESEND_API_KEY);
 
-  // --- 1) Admin-Mail
+  // ── 1) Admin-Mail (an Praxis)
   const subjectAdmin = "Neue Reservierung – Rejuvenation 90";
   const htmlAdmin = `
     <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial">
@@ -169,20 +169,21 @@ export async function POST(req: Request) {
   `;
   const textAdmin = stripHtml(htmlAdmin);
 
-  const adminRes = await resend.emails.send({
-    from: RESERVATION_FROM,
+  const { data: adminData, error: adminError } = await resend.emails.send({
+    from: RESERVATION_FROM,           // hier gerne verifizierte eigene Domain
     to: [RESERVATION_TO],
     replyTo: [email],
     subject: subjectAdmin,
     html: htmlAdmin,
     text: textAdmin,
   });
-  if (adminRes.error) {
-    console.error("Resend admin error:", adminRes.error);
+
+  if (adminError) {
+    console.error("Resend admin error:", adminError);
     return errorResponse(502, "Versand fehlgeschlagen. Bitte später erneut versuchen.");
   }
 
-  // --- 2) Empfangsbestätigung an Nutzer
+  // ── 2) Empfangsbestätigung (an Nutzer) → bewusst über Resend-Default-Domain
   const subjectUser = "Empfangsbestätigung – HBOT Praxis Charlottenburg";
   const htmlUser = `
     <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;line-height:1.5">
@@ -204,54 +205,35 @@ export async function POST(req: Request) {
   `;
   const textUser = stripHtml(htmlUser);
 
-  let confirmQueued = false;
-  let confirmFallbackUsed = false;
+  // Für Nutzerbestätigung immer die Resend-Default-Domain/Fallback nutzen
+  const fromUser = RESEND_FALLBACK_FROM; // z.B. onboarding@resend.dev
+  const idKey = `confirm-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
-  try {
-    const userRes = await resend.emails.send({
-      from: RESERVATION_FROM,
-      to: [email],
-      replyTo: [RESERVATION_TO],
-      subject: subjectUser,
-      html: htmlUser,
-      text: textUser,
-    });
-    confirmQueued = !userRes.error;
-    if (userRes.error) {
-      console.error("Resend user confirmation error:", userRes.error);
-      // Fallback mit verlässlichem Absender
-      const fbRes = await resend.emails.send({
-        from: RESEND_FALLBACK_FROM,
-        to: [email],
-        replyTo: [RESERVATION_TO],
-        subject: subjectUser,
-        html: htmlUser,
-        text: textUser,
-      });
-      confirmFallbackUsed = !fbRes.error;
-      if (fbRes.error) {
-        console.error("Resend user confirmation fallback error:", fbRes.error);
-      }
-    }
-  } catch (e) {
-    console.error("Confirmation send failed:", e);
-    try {
-      const fbRes = await resend.emails.send({
-        from: RESEND_FALLBACK_FROM,
-        to: [email],
-        replyTo: [RESERVATION_TO],
-        subject: subjectUser,
-        html: htmlUser,
-        text: textUser,
-      });
-      confirmFallbackUsed = !fbRes.error;
-      if (fbRes.error) console.error("Resend user confirmation fallback error:", fbRes.error);
-    } catch (ee) {
-      console.error("Confirmation fallback threw:", ee);
-    }
+  const { data: userData, error: userError } = await resend.emails.send({
+    from: `HBOT Praxis <${fromUser}>`,
+    to: [email],
+    replyTo: [RESERVATION_TO],
+    subject: subjectUser,
+    html: htmlUser,
+    text: textUser,
+    headers: { "Idempotency-Key": idKey },
+    tags: [{ name: "type", value: "user-confirmation" }],
+  });
+
+  if (userError) {
+    // Wir werten das nicht als Fehler für den Request, loggen aber für Diagnose
+    console.error("Resend user confirmation error:", userError);
   }
 
-  return NextResponse.json({ ok: true, queued: true, confirmQueued, confirmFallbackUsed, id: adminRes.data?.id });
+  const confirmQueued = !!userData?.id;
+
+  return NextResponse.json({
+    ok: true,
+    queued: true,
+    adminId: adminData?.id ?? null,
+    userId: userData?.id ?? null,
+    confirmQueued,
+  });
 }
 
 // Optional: GET für schnellen Browser-Check
