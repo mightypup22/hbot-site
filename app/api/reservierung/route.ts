@@ -9,9 +9,9 @@ export const runtime = "nodejs";
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const RESERVATION_TO = process.env.RESERVATION_TO ?? "hallo@hbot-berlin.de";
 const RESERVATION_FROM = process.env.RESERVATION_FROM ?? "onboarding@resend.dev"; // Admin-Mail-Absender
-const RESEND_FALLBACK_FROM = process.env.RESEND_FALLBACK_FROM ?? "onboarding@resend.dev"; // Nutzerbestätigung (sicher zustellbar)
+const RESEND_FALLBACK_FROM = process.env.RESEND_FALLBACK_FROM ?? "onboarding@resend.dev"; // Nutzer-Bestätigung
 
-// ───────────────────────────── Rate Limit: 5 req / 10 min / IP (in-memory)
+// ───────────────────────────── App-Rate-Limit: 5 req / 10 min / IP
 type Bucket = { first: number; count: number };
 const buckets = new Map<string, Bucket>();
 const LIMIT = 5;
@@ -111,7 +111,15 @@ function errorResponse(status: number, msg: string, issues?: unknown) {
   return NextResponse.json({ ok: false, error: msg, errors }, { status });
 }
 
-// ───────────────────────────── Handlers
+// ───────────────────────────── Resend-Helfer
+function isResend429(err: unknown): boolean {
+  if (!isRecord(err)) return false;
+  const name = typeof err["name"] === "string" ? err["name"] : "";
+  const status = typeof err["statusCode"] === "number" ? err["statusCode"] : 0;
+  return name === "rate_limit_exceeded" || status === 429;
+}
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 export async function POST(req: Request) {
   const ip = ipFromHeaders(req);
   if (!ratelimit(ip)) {
@@ -145,7 +153,6 @@ export async function POST(req: Request) {
     );
   }
 
-  // Dry-Run lokal/ohne ENV
   if (!RESEND_API_KEY) {
     console.warn("[DRY-RUN] RESEND_API_KEY fehlt. E-Mails nicht gesendet.");
     return NextResponse.json({ ok: true, queued: false, dryRun: true });
@@ -153,7 +160,7 @@ export async function POST(req: Request) {
 
   const resend = new Resend(RESEND_API_KEY);
 
-  // ── 1) Admin-Mail (an Praxis)
+  // Inhalte
   const subjectAdmin = "Neue Reservierung – Rejuvenation 90";
   const htmlAdmin = `
     <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial">
@@ -169,21 +176,6 @@ export async function POST(req: Request) {
   `;
   const textAdmin = stripHtml(htmlAdmin);
 
-  const { data: adminData, error: adminError } = await resend.emails.send({
-    from: RESERVATION_FROM,           // hier gerne verifizierte eigene Domain
-    to: [RESERVATION_TO],
-    replyTo: [email],
-    subject: subjectAdmin,
-    html: htmlAdmin,
-    text: textAdmin,
-  });
-
-  if (adminError) {
-    console.error("Resend admin error:", adminError);
-    return errorResponse(502, "Versand fehlgeschlagen. Bitte später erneut versuchen.");
-  }
-
-  // ── 2) Empfangsbestätigung (an Nutzer) → bewusst über Resend-Default-Domain
   const subjectUser = "Empfangsbestätigung – HBOT Praxis Charlottenburg";
   const htmlUser = `
     <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;line-height:1.5">
@@ -205,38 +197,89 @@ export async function POST(req: Request) {
   `;
   const textUser = stripHtml(htmlUser);
 
-  // Für Nutzerbestätigung immer die Resend-Default-Domain/Fallback nutzen
-  const fromUser = RESEND_FALLBACK_FROM; // z.B. onboarding@resend.dev
-  const idKey = `confirm-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  // E-Mail-Optionen als normale Objekte (kein readonly)
+  type SendOpts = Parameters<typeof resend.emails.send>[0];
 
-  const { data: userData, error: userError } = await resend.emails.send({
-    from: `HBOT Praxis <${fromUser}>`,
-    to: [email],
-    replyTo: [RESERVATION_TO],
+  const adminOptions: SendOpts = {
+    from: RESERVATION_FROM,
+    to: RESERVATION_TO,      // string erlaubt
+    replyTo: email,
+    subject: subjectAdmin,
+    html: htmlAdmin,
+    text: textAdmin,
+  };
+
+  const userOptions: SendOpts = {
+    from: `HBOT Praxis <${RESEND_FALLBACK_FROM}>`,
+    to: email,               // string erlaubt
+    replyTo: RESERVATION_TO,
     subject: subjectUser,
     html: htmlUser,
     text: textUser,
-    headers: { "Idempotency-Key": idKey },
-    tags: [{ name: "type", value: "user-confirmation" }],
-  });
+  };
 
-  if (userError) {
-    // Wir werten das nicht als Fehler für den Request, loggen aber für Diagnose
-    console.error("Resend user confirmation error:", userError);
+  // Batch (1 Request) + einfacher Retry bei 429
+  async function sendBatchWithRetry() {
+    const first = await resend.batch.send([adminOptions, userOptions]);
+    if (!first?.error) return first;
+    if (isResend429(first.error)) {
+      await sleep(700);
+      return await resend.batch.send([adminOptions, userOptions]);
+    }
+    return first;
   }
 
-  const confirmQueued = !!userData?.id;
+  const batchRes = await sendBatchWithRetry();
+
+  if (batchRes?.error) {
+    // Letzter Fallback: nur Admin-Mail (Lead sicherstellen)
+    console.error("Resend batch error:", batchRes.error);
+    const adminOnly = await resend.emails.send(adminOptions);
+    if (adminOnly.error) {
+      console.error("Resend admin-only error:", adminOnly.error);
+      return errorResponse(502, "Versand fehlgeschlagen. Bitte später erneut versuchen.");
+    }
+    return NextResponse.json({
+      ok: true,
+      queued: true,
+      adminId: adminOnly.data?.id ?? null,
+      userId: null,
+      confirmQueued: false,
+      note: "Batch fehlgeschlagen; nur Admin-Mail versendet.",
+    });
+  }
+
+  // ------ IDs sicher extrahieren (ohne Index-Ann. auf unbekanntem Typ)
+  function hasId(v: unknown): v is { id: string } {
+    return typeof v === "object" && v !== null && typeof (v as { id?: unknown }).id === "string";
+  }
+
+  let adminId: string | null = null;
+  let userId: string | null = null;
+
+  const dataUnknown = (batchRes as { data?: unknown }).data;
+  if (Array.isArray(dataUnknown)) {
+    if (hasId(dataUnknown[0])) adminId = dataUnknown[0].id;
+    if (hasId(dataUnknown[1])) userId = dataUnknown[1].id;
+  }
 
   return NextResponse.json({
     ok: true,
     queued: true,
-    adminId: adminData?.id ?? null,
-    userId: userData?.id ?? null,
-    confirmQueued,
+    adminId,
+    userId,
+    confirmQueued: !!userId,
   });
 }
 
-// Optional: GET für schnellen Browser-Check
+// Optionaler GET-Check (für schnelle Diagnose; bei Bedarf später entfernen)
 export async function GET() {
-  return NextResponse.json({ ok: true, route: "/api/reservierung" });
+  return NextResponse.json({
+    ok: true,
+    route: "/api/reservierung",
+    hasResendKey: !!process.env.RESEND_API_KEY,
+    fromAdmin: process.env.RESERVATION_FROM ?? null,
+    fromUser: process.env.RESEND_FALLBACK_FROM ?? "onboarding@resend.dev",
+    env: process.env.VERCEL_ENV || "unknown",
+  });
 }
