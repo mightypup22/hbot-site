@@ -7,7 +7,7 @@ export default function Footer() {
         <div>
           <h3 className="font-semibold">Kontakt</h3>
           <p className="mt-3 text-sm text-slate-600">
-            HBOT Praxis Charlottenburg<br />
+            HBOT Studio Berlin<br />
             (genaue Adresse folgt)<br />
             Berlin-Charlottenburg<br />
             Tel: 030&nbsp;1234567<br />
@@ -47,7 +47,7 @@ export default function Footer() {
         </div>
       </div>
       <div className="border-t border-slate-200 py-6 text-center text-xs text-slate-500">
-        © {new Date().getFullYear()} HBOT Praxis Charlottenburg. Alle Rechte vorbehalten.
+        © {new Date().getFullYear()} HBOT Studio Berlin. Alle Rechte vorbehalten.
       </div>
     </footer>
   );

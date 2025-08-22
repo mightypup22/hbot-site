@@ -1,9 +1,9 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Datenschutzerklärung – HBOT Praxis Charlottenburg",
+  title: "Datenschutzerklärung – HBOT Studio Berlin",
   description:
-    "Datenschutzhinweise der HBOT Praxis Charlottenburg GmbH gemäß DSGVO: Verantwortlicher, Zwecke, Rechtsgrundlagen, Empfänger, Speicherdauer, Betroffenenrechte.",
+    "Datenschutzhinweise der HBOT Studio Berlin UG gemäß DSGVO: Verantwortlicher, Zwecke, Rechtsgrundlagen, Empfänger, Speicherdauer, Betroffenenrechte.",
 };
 
 export default function DatenschutzPage() {
@@ -23,8 +23,8 @@ export default function DatenschutzPage() {
         {/* Verantwortlicher */}
         <section className="mt-8 space-y-2 text-sm leading-relaxed text-slate-700">
           <h2 className="text-lg font-semibold">1. Verantwortlicher</h2>
-          <p>HBOT Praxis Charlottenburg GmbH</p>
-          <p>Kaiserdamm 100, 14057 Berlin</p>
+          <p>HBOT Studio Berlin UG</p>
+          <p>Kaiserdamm XXX, 14057 Berlin</p>
           <p>
             E-Mail: datenschutz@hbot-berlin.de · Telefon: 030&nbsp;1234567 · Web: www.hbot-berlin.de
           </p>

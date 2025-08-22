@@ -86,7 +86,7 @@ function SplineHero({ url, layout = "inline" }: { url: string; layout?: "inline"
 
   return (
     <div className={isBg ? "absolute inset-0" : "relative"}>
-      <div className={isBg ? "absolute inset-0 overflow-visible" : "relative w-full min-h-[340px] h-[50vh] md:h-[60vh] xl:h-[70vh] overflow-visible"}>
+      <div className={isBg ? "absolute inset-0 overflow-hidden" : "relative w-full min-h-[340px] h-[50vh] md:h-[60vh] xl:h-[70vh] overflow-hidden"}>
         {ready ? (
           // @ts-expect-error -- Spline Custom Element ist nicht Teil der DOM-Typen
           <spline-viewer
@@ -149,61 +149,59 @@ function SplineHero({ url, layout = "inline" }: { url: string; layout?: "inline"
 }
 
 export default function HBOTPraxisBerlin() {
+  // Zustände für Submit-Feedback & Feldfehler
+  const [submitting, setSubmitting] = useState(false);
+  const [submitMsg, setSubmitMsg] = useState<null | { type: "ok" | "err"; text: string }>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-// Zustände für Submit-Feedback & Feldfehler
-const [submitting, setSubmitting] = useState(false);
-const [submitMsg, setSubmitMsg] = useState<null | { type: "ok" | "err"; text: string }>(null);
-const [errors, setErrors] = useState<Record<string, string>>({});
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setSubmitting(true);
+    setSubmitMsg(null);
+    setErrors({});
 
-async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-  e.preventDefault();
-  setSubmitting(true);
-  setSubmitMsg(null);
-  setErrors({});
+    const form = e.currentTarget;
+    const fd = new FormData(form);
 
-  const form = e.currentTarget;
-  const fd = new FormData(form);
+    const val = (k: string) => String(fd.get(k) ?? "");
+    const opt = (s: string) => (s.trim() === "" ? undefined : s.trim());
 
-  const val = (k: string) => String(fd.get(k) ?? "");
-  const opt = (s: string) => (s.trim() === "" ? undefined : s.trim());
+    const payload = {
+      name: val("name"),
+      email: val("email"),
+      phone: opt(val("phone")),
+      startWeek: opt(val("startWeek")), // optional
+      message: opt(val("message")), // optional
+      consent: fd.get("consent") === "on",
+      company: opt(val("company")), // Honeypot
+    };
 
-  const payload = {
-    name: val("name"),
-    email: val("email"),
-    phone: opt(val("phone")),
-    startWeek: opt(val("startWeek")), // optional
-    message: opt(val("message")),     // optional
-    consent: fd.get("consent") === "on",
-    company: opt(val("company")),     // Honeypot
-  };
+    try {
+      const res = await fetch("/api/reservierung", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      });
 
-  try {
-    const res = await fetch("/api/reservierung", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+      const json = await res.json().catch(() => ({}));
 
-    const json = await res.json().catch(() => ({}));
-
-    if (res.ok && json?.ok) {
-      setSubmitMsg({ type: "ok", text: "Danke! Wir haben Ihre Reservierung erhalten und melden uns zeitnah." });
-      form.reset();
-      setErrors({});
-    } else if (res.status === 400 && json?.errors) {
-      // Feldfehler hübsch anzeigen
-      setErrors(json.errors as Record<string, string>);
-      setSubmitMsg({ type: "err", text: json.errors?.general ?? "Bitte prüfen Sie Ihre Eingaben." });
-    } else {
-      setSubmitMsg({ type: "err", text: json?.error || "Senden fehlgeschlagen. Bitte später erneut versuchen." });
+      if (res.ok && json?.ok) {
+        setSubmitMsg({ type: "ok", text: "Danke! Wir haben Ihre Reservierung erhalten und melden uns zeitnah." });
+        form.reset();
+        setErrors({});
+      } else if (res.status === 400 && json?.errors) {
+        // Feldfehler hübsch anzeigen
+        setErrors(json.errors as Record<string, string>);
+        setSubmitMsg({ type: "err", text: json.errors?.general ?? "Bitte prüfen Sie Ihre Eingaben." });
+      } else {
+        setSubmitMsg({ type: "err", text: json?.error || "Senden fehlgeschlagen. Bitte später erneut versuchen." });
+      }
+    } catch {
+      setSubmitMsg({ type: "err", text: "Netzwerkfehler. Bitte später erneut versuchen." });
+    } finally {
+      setSubmitting(false);
     }
-  } catch {
-    setSubmitMsg({ type: "err", text: "Netzwerkfehler. Bitte später erneut versuchen." });
-  } finally {
-    setSubmitting(false);
   }
-}
-
 
   // Lightweight diagnostics for the hero component + simple UI tests
   const [diag, setDiag] = useState({
@@ -237,7 +235,7 @@ async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
   return (
     <main className="min-h-screen bg-white text-slate-900" style={{ fontFamily: "var(--font-sans)" }}>
       {/* Hero */}
-      <section className="relative overflow-visible min-h-screen flex items-center">
+      <section className="relative min-h-screen flex items-center overflow-x-hidden">
         <div className="absolute inset-0 -z-10 bg-gradient-to-b from-slate-50 to-white" />
         <div
           className="absolute inset-0 -z-10"
@@ -253,12 +251,12 @@ async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
         <div className="relative z-20 max-w-7xl mx-auto px-4 py-16 md:py-24 grid md:grid-cols-2 gap-10 items-center">
           <div>
             <h1 className="display text-4xl md:text-5xl font-bold tracking-tight">
-              Rejuvenation <span className="whitespace-nowrap">90 — Programm</span>
+              Rejuvenation 90 <span className="whitespace-nowrap">- Programm</span>
             </h1>
             <p className="mt-5 text-lg text-slate-600 leading-relaxed">
-              90 HBOT-Sitzungen in 3 Monaten in unserer Praxis in Berlin-Charlottenburg.
+              60 HBOT-Sitzungen in 90 Tagen in unserem Studio in Berlin-Charlottenburg.
               Ziel: Telomer-Längenerhalt/-verlängerung und Förderung zellulärer Verjüngungsprozesse.
-              Premium-Betreuung mit täglichem Zugang <span className="whitespace-nowrap">(24 /7)</span> für optimale Integration.
+              Premium-Betreuung mit täglichem Zugang <span className="whitespace-nowrap">(24 /7)</span> für optimale Integration in Ihren Alltag.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link href="#kontakt" className="px-5 py-3 rounded-2xl btn-brand">Early-Bird reservieren</Link>
@@ -267,15 +265,15 @@ async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
             <dl className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 overflow-hidden">
                 <dt className="text-slate-500 flex items-center gap-1">Sitzung</dt>
-                <dd className="font-semibold break-words whitespace-normal leading-snug">90 Min mit 100% Sauerstoff</dd>
+                <dd className="font-semibold break-words whitespace-normal leading-snug">60 - 90 Min 100% Sauerstoff</dd>
               </div>
               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 overflow-hidden">
                 <dt className="text-slate-500 flex items-center gap-1">Anzahl</dt>
-                <dd className="font-semibold break-words whitespace-normal leading-snug">90 Sitzungen in 3 Monaten</dd>
+                <dd className="font-semibold break-words whitespace-normal leading-snug">60 Sitzungen in 90 Tagen</dd>
               </div>
               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 overflow-hidden">
                 <dt className="text-slate-500 flex items-center gap-1">Zugang</dt>
-                <dd className="font-semibold break-words whitespace-normal leading-snug">24/7</dd>
+                <dd className="font-semibold break-words whitespace-normal leading-snug">24 Stunden / 7 Tage die Woche</dd>
               </div>
               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 overflow-hidden">
                 <dt className="text-slate-500 flex items-center gap-1">Preis</dt>
@@ -300,7 +298,7 @@ async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
           <div className="p-6 rounded-3xl border border-slate-200">
             <h3 className="text-xl font-semibold">Struktur</h3>
             <ul className="mt-3 space-y-2 text-sm text-slate-700">
-              <li>90 Sitzungen in 12–13 Wochen</li>
+              <li>60 Sitzungen in 12–13 Wochen</li>
               <li>Individuelles Tagesfenster, Zugang 24 /7</li>
               <li>Persönliches Coaching & Begleitung</li>
               <li>Biomarker-Messungen vor/nach dem Programm</li>
@@ -341,6 +339,31 @@ async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
             um Fortschritte messbar zu machen – transparent und wissenschaftsnah.
           </p>
         </div>
+      </section>
+
+      {/* Was ist HBOT? – Kurzinfo (NEU) */}
+      <section id="was-ist-hbot" className="max-w-7xl mx-auto px-4 py-16 border-t border-slate-200">
+        <h2 className="display text-3xl font-bold">Was ist HBOT?</h2>
+        <p className="mt-3 text-slate-600 max-w-3xl">
+          HBOT (Hyperbare Sauerstofftherapie) ist die Gabe von 100&nbsp;% Sauerstoff unter erhöhtem Umgebungsdruck
+          in einer Druckkammer. Dadurch löst sich deutlich mehr Sauerstoff im Blutplasma, was die Gewebeversorgung
+          und Regenerationsprozesse unterstützen kann.
+        </p>
+        <ul className="mt-6 grid md:grid-cols-2 gap-3 text-sm text-slate-700">
+          <li className="p-4 rounded-2xl bg-slate-50 border border-slate-200">Erhöhte Sauerstoff-Löslichkeit (vereinfacht: Henry-Gesetz).</li>
+          <li className="p-4 rounded-2xl bg-slate-50 border border-slate-200">Verbesserte Mikrozirkulation & Gewebsversorgung.</li>
+          <li className="p-4 rounded-2xl bg-slate-50 border border-slate-200">Begleitete Protokolle, strukturierter Ablauf.</li>
+          <li className="p-4 rounded-2xl bg-slate-50 border border-slate-200">Sicherheit: standardisierte Verfahren, Eignungscheck.</li>
+        </ul>
+        <div className="mt-6">
+          {/* Wenn du eine Detailseite anlegst, ändere href auf "/hbot" */}
+          <Link href="/hbot" className="inline-block px-4 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-50">
+            Mehr erfahren
+          </Link>
+        </div>
+        <p className="mt-3 text-xs text-slate-500">
+          Hinweis: Keine medizinische Beratung/kein Heilversprechen. Individuelle Eignung erforderlich.
+        </p>
       </section>
 
       {/* Evidenz & Publikationen */}
@@ -460,7 +483,7 @@ async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
             <p className="mt-3 text-4xl font-bold">4.999 €</p>
             <ul className="mt-4 space-y-2 text-sm">
               <li className="flex gap-2 items-start"><span className="mt-1 h-1.5 w-1.5 rounded-full bg-[var(--brand)]" /> 90 Sitzungen in 3 Monaten </li>
-              <li className="flex gap-2 items-start"><span className="mt-1 h-1.5 w-1.5 rounded-full bg-[var(--brand)]" /> 24 /7 Zugang zur Praxis </li>
+              <li className="flex gap-2 items-start"><span className="mt-1 h-1.5 w-1.5 rounded-full bg-[var(--brand)]" /> 24 /7 Zugang zum Studio </li>
               <li className="flex gap-2 items-start"><span className="mt-1 h-1.5 w-1.5 rounded-full bg-[var(--brand)]" /> Persönliches Coaching </li>
               <li className="flex gap-2 items-start"><span className="mt-1 h-1.5 w-1.5 rounded-full bg-[var(--brand)]" /> Biomarker-Messungen vor & nach </li>
             </ul>
@@ -501,12 +524,12 @@ async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
         </div>
       </section>
 
-      {/* Kapazität (Inhalt behalten; Menüpunkt ist im Header entfernt) */}
+      {/* Kapazität */}
       <section id="kapazitaet" className="max-w-7xl mx-auto px-4 py-16 border-t border-slate-200">
         <div className="p-6 rounded-3xl border border-slate-200 bg-slate-50">
           <h2 className="display text-2xl font-bold">Begrenzte Plätze: Premium-Betreuung</h2>
           <p className="mt-2 text-slate-700">
-            Wir nehmen pro Quartal maximal <strong>8 Kund:innen</strong> auf, um exklusive Betreuung, flexible Terminfenster und
+            Wir nehmen pro Quartal maximal <strong>10 Kund:innen</strong> auf, um exklusive Betreuung, flexible Terminfenster und
             höchste Qualitätsstandards zu gewährleisten.
           </p>
         </div>
@@ -515,7 +538,7 @@ async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
       {/* Kontakt / Reservierung */}
       <section id="kontakt" className="max-w-3xl mx-auto px-4 py-16 border-t border-slate-200">
         <h2 className="display text-3xl font-bold">Unverbindlich reservieren</h2>
-        <p className="mt-3 text-slate-600">Sichern Sie sich den Early-Bird-Vorteil. Wir melden uns zur Eignungsklärung und Terminplanung.</p>
+        <p className="mt-3 text-slate-600">Eröffnung in 2026. Sichern Sie sich jetzt unverbindlich den Early-Bird-Vorteil. Wir melden uns zur Eignungsklärung und Terminplanung.</p>
         <form onSubmit={onSubmit} className="mt-8 grid gap-4">
           {/* Allgemeine Fehlermeldung (oben) */}
           {submitMsg?.type === "err" && (
@@ -613,8 +636,6 @@ async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
             Mit dem Absenden stimmen Sie der Kontaktaufnahme per E-Mail/Telefon zu.
           </p>
         </form>
-
-
 
         {/* Debug/Diagnostics (acts like lightweight test cases) */}
         <details className="mt-8 text-xs text-slate-500">

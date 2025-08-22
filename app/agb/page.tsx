@@ -1,9 +1,9 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "AGB – HBOT Praxis Charlottenburg",
+  title: "AGB – HBOT Studio Berlin",
   description:
-    "Allgemeine Geschäftsbedingungen der HBOT Praxis Charlottenburg GmbH für das Rejuvenation 90 Programm und alternative Protokolle.",
+    "Allgemeine Geschäftsbedingungen der HBOT Studio Berlin UG für das Rejuvenation 90 Programm und alternative Protokolle.",
 };
 
 export default function AGBPage() {
@@ -22,7 +22,7 @@ export default function AGBPage() {
         </h1>
 
         <p className="mt-3 text-sm text-slate-500">
-          Diese AGB regeln die vertraglichen Beziehungen zwischen der HBOT Praxis Charlottenburg GmbH (nachfolgend „Anbieter“) und
+          Diese AGB regeln die vertraglichen Beziehungen zwischen der HBOT Studio Berlin UG (nachfolgend „Anbieter“) und
           ihren Kund:innen (nachfolgend „Kunde“). Sie gelten für das Programm <strong>„Rejuvenation 90“</strong> sowie für
           alternative, individuell vereinbarte Protokolle.
         </p>
@@ -41,7 +41,7 @@ export default function AGBPage() {
         <section className="mt-8 space-y-2 text-sm leading-relaxed text-slate-700">
           <h2 className="text-lg font-semibold">2. Vertragspartner & Kontakt</h2>
           <p>
-            HBOT Praxis Charlottenburg GmbH, Kaiserdamm 100, 14057 Berlin · Tel.: 030 1234567 · E-Mail: hallo@hbot-berlin.de
+            HBOT Studio Berlin UG, Kaiserdamm XXX, 14057 Berlin · Tel.: 030 1234567 · E-Mail: hallo@hbot-berlin.de
           </p>
         </section>
 
@@ -50,7 +50,7 @@ export default function AGBPage() {
           <h2 className="text-lg font-semibold">3. Leistungen</h2>
           <ul className="list-disc pl-5 space-y-1">
             <li>
-              <strong>Rejuvenation 90</strong>: 90 HBOT-Sitzungen innerhalb von ca. 12–13 Wochen (Planung 6–7 Sitzungen/Woche),
+              <strong>Rejuvenation 90</strong>: 60 HBOT-Sitzungen innerhalb von ca. 12–13 Wochen (Planung 3–4 Sitzungen/Woche),
               Zugang <strong>24/7</strong> via Buchungssystem, persönliches Coaching, Biomarker-Messungen vor/nach dem Programm.
             </li>
             <li>
@@ -96,7 +96,7 @@ export default function AGBPage() {
           <ul className="list-disc pl-5 space-y-1">
             <li>Zugang zu den Sitzungen <strong>rund um die Uhr (24/7)</strong> nach Verfügbarkeit über das Buchungssystem.</li>
             <li>
-              Zur Wahrung der Betreuungsqualität nimmt der Anbieter pro Quartal <strong>maximal 8 Kund:innen</strong> auf.
+              Zur Wahrung der Betreuungsqualität nimmt der Anbieter pro Quartal <strong>maximal 10 Kund:innen</strong> auf.
             </li>
             <li>
               Der Kunde verpflichtet sich, Sicherheitsanweisungen und Praxisregeln einzuhalten. Bei Verstößen kann der Anbieter die
@@ -158,7 +158,7 @@ export default function AGBPage() {
             <div className="mt-3 space-y-2">
               <p>(Wenn Sie den Vertrag widerrufen wollen, dann füllen Sie dieses Formular aus und senden Sie es zurück.)</p>
               <p>
-                An: HBOT Praxis Charlottenburg GmbH, Kaiserdamm 100, 14057 Berlin, E-Mail: widerruf@hbot-berlin.de
+                An: HBOT Studio Berlin UG, Kaiserdamm XXX, 14057 Berlin, E-Mail: widerruf@hbot-berlin.de
               </p>
               <p>
                 Hiermit widerrufe(n) ich/wir den von mir/uns abgeschlossenen Vertrag über die Erbringung der folgenden Leistung:

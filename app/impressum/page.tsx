@@ -1,9 +1,9 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Impressum – HBOT Praxis Charlottenburg",
+  title: "Impressum – HBOT Studio Berlin",
   description:
-    "Impressum der HBOT Praxis Charlottenburg GmbH: Anbieterangaben, Kontakt, Registereintrag, USt-IdNr., Haftungshinweise.",
+    "Impressum der HBOT Studio Berlin UG: Anbieterangaben, Kontakt, Registereintrag, USt-IdNr., Haftungshinweise.",
 };
 
 export default function ImpressumPage() {
@@ -23,8 +23,8 @@ export default function ImpressumPage() {
 
         <section className="mt-8 space-y-3 text-sm leading-relaxed text-slate-700">
           <p><strong>Anbieter</strong></p>
-          <p>HBOT Praxis Charlottenburg GmbH</p>
-          <p>Kaiserdamm 100<br />14057 Berlin</p>
+          <p>HBOT Studio Berlin UG</p>
+          <p>Kaiserdamm xxx<br />14057 Berlin</p>
           <p>Telefon: 030&nbsp;1234567<br />E-Mail: hallo@hbot-berlin.de<br />Web: www.hbot-berlin.de</p>
         </section>
 
