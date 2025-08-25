@@ -482,7 +482,7 @@ export default function HBOTPraxisBerlin() {
             <h3 className="text-2xl font-bold">Rejuvenation 90</h3>
             <p className="mt-3 text-4xl font-bold">4.999 €</p>
             <ul className="mt-4 space-y-2 text-sm">
-              <li className="flex gap-2 items-start"><span className="mt-1 h-1.5 w-1.5 rounded-full bg-[var(--brand)]" /> 90 Sitzungen in 3 Monaten </li>
+              <li className="flex gap-2 items-start"><span className="mt-1 h-1.5 w-1.5 rounded-full bg-[var(--brand)]" /> 60 Sitzungen in 90 Tagen </li>
               <li className="flex gap-2 items-start"><span className="mt-1 h-1.5 w-1.5 rounded-full bg-[var(--brand)]" /> 24 /7 Zugang zum Studio </li>
               <li className="flex gap-2 items-start"><span className="mt-1 h-1.5 w-1.5 rounded-full bg-[var(--brand)]" /> Persönliches Coaching </li>
               <li className="flex gap-2 items-start"><span className="mt-1 h-1.5 w-1.5 rounded-full bg-[var(--brand)]" /> Biomarker-Messungen vor & nach </li>

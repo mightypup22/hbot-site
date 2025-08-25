@@ -52,6 +52,7 @@ export default function Header() {
           <Link href="/#philosophie" className="navlink hover:text-slate-700">Philosophie</Link>
           <Link href="/#was-ist-hbot" className="navlink hover:text-slate-700">HBOT</Link>
           <Link href="/#evidenz" className="navlink hover:text-slate-700">Evidenz</Link>
+          <Link href="/#biomarker" className="navlink hover:text-slate-700">Biomarker</Link>
           <Link href="/#preise" className="navlink hover:text-slate-700">Preis</Link>
           <Link href="/#kontakt" className="px-3 py-1.5 rounded-xl btn-brand">Reservieren</Link>
         </nav>
@@ -77,6 +78,7 @@ export default function Header() {
             <Link href="/#philosophie" onClick={() => setOpen(false)} className="py-2">Philosophie</Link>
             <Link href="/#was-ist-hbot" onClick={() => setOpen(false)} className="py-2">HBOT</Link>
             <Link href="/#evidenz" onClick={() => setOpen(false)} className="py-2">Evidenz</Link>
+            <Link href="/#biomarker" onClick={() => setOpen(false)} className="py-2">Biomarker</Link>
             <Link href="/#preise" onClick={() => setOpen(false)} className="py-2">Preis</Link>
             <Link href="/#kontakt" onClick={() => setOpen(false)} className="py-2 px-3 rounded-xl btn-brand w-fit">Reservieren</Link>
             {/*<hr className="w-24 border-slate-200 my-2" />
