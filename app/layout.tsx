@@ -8,7 +8,7 @@ import Script from "next/script"; // ← NEU: für JSON-LD
 
 export const metadata: Metadata = {
   // ← WICHTIG: echte Domain setzen
-  metadataBase: new URL("https://deine-domain.tld"),
+  metadataBase: new URL("https://www.hbot-berlin.de"),
 
   title: {
     default: "HBOT Studio Berlin",
