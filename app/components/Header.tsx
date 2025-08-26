@@ -49,10 +49,10 @@ export default function Header() {
         {/* Desktop Nav */}
         <nav className="hidden md:flex items-center gap-6 text-[13px] md:text-sm tracking-wide font-medium text-slate-700/90 font-nav">
           <Link href="/#programm" className="navlink transition-colors hover:text-slate-900">Programm</Link>
-          <Link href="/#philosophie" className="navlink transition-colors hover:text-slate-900">Philosophie</Link>
+          {/*<Link href="/#philosophie" className="navlink transition-colors hover:text-slate-900">Philosophie</Link>*/}
           <Link href="/#was-ist-hbot" className="navlink transition-colors hover:text-slate-900">HBOT</Link>
           <Link href="/#evidenz" className="navlink transition-colors hover:text-slate-900">Evidenz</Link>
-          <Link href="/#biomarker" className="navlink transition-colors hover:text-slate-900">Biomarker</Link>
+          {/*<Link href="/#biomarker" className="navlink transition-colors hover:text-slate-900">Biomarker</Link>*/}
           <Link href="/#preise" className="navlink transition-colors hover:text-slate-900">Preis</Link>
           <Link href="/#kontakt" className="px-3 py-1.5 rounded-xl btn-brand">Reservieren</Link>
         </nav>
@@ -75,10 +75,10 @@ export default function Header() {
         <nav className="px-4 py-6 text-sm w-full h-full grid place-items-center font-nav">
           <div className="flex flex-col items-center gap-4">
             <Link href="/#programm" onClick={() => setOpen(false)} className="py-2">Programm</Link>
-            <Link href="/#philosophie" onClick={() => setOpen(false)} className="py-2">Philosophie</Link>
+            {/*<Link href="/#philosophie" onClick={() => setOpen(false)} className="py-2">Philosophie</Link>*/}
             <Link href="/#was-ist-hbot" onClick={() => setOpen(false)} className="py-2">HBOT</Link>
             <Link href="/#evidenz" onClick={() => setOpen(false)} className="py-2">Evidenz</Link>
-            <Link href="/#biomarker" onClick={() => setOpen(false)} className="py-2">Biomarker</Link>
+            {/*<Link href="/#biomarker" onClick={() => setOpen(false)} className="py-2">Biomarker</Link>*/}
             <Link href="/#preise" onClick={() => setOpen(false)} className="py-2">Preis</Link>
             <Link href="/#kontakt" onClick={() => setOpen(false)} className="py-2 px-3 rounded-xl btn-brand w-fit">Reservieren</Link>
             {/*<hr className="w-24 border-slate-200 my-2" />
