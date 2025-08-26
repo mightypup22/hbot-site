@@ -59,19 +59,19 @@ body {
 /* ===== Anchor Offset unter Sticky-Header =====
    Stellschrauben: --header-h & --anchor-offset */
 :root {
-  --header-h: 64px; /* Header-Höhe mobile (h-16) */
+  --header-h: 44px; /* Header-Höhe mobile (h-16) */
   --anchor-offset: calc(var(--header-h) + 16px);
 }
 
 @media (min-width: 768px) {
   :root {
-    --header-h: 72px; /* falls du h-16 lässt, kannst du 64px belassen; 72 macht etwas mehr Puffer */
+    --header-h: 44px; /* falls du h-16 lässt, kannst du 64px belassen; 72 macht etwas mehr Puffer */
     --anchor-offset: calc(var(--header-h) + 18px);
   }
 }
 @media (min-width: 1280px) {
   :root {
-    --header-h: 80px;
+    --header-h: 44px;
     --anchor-offset: calc(var(--header-h) + 20px);
   }
 }
