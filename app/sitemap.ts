@@ -2,7 +2,7 @@
 import type {MetadataRoute} from 'next';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const base = 'https://deine-domain.tld'; // ← anpassen
+  const base = 'https://www.hbot-berlin.de'; // ← anpassen
   const now = new Date();
 
   return [

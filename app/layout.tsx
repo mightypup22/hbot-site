@@ -49,7 +49,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "de_DE",
-    url: "https://deine-domain.tld/", // ← anpassen
+    url: "https://www.hbot-berlin.de", // ← anpassen
     siteName: "HBOT Studio Berlin",
     title: "HBOT Studio Berlin – Rejuvenation 90",
     description:
@@ -106,13 +106,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             __html: JSON.stringify({
               "@context": "https://schema.org",
               "@type": "HealthAndBeautyBusiness", // alternativ "MedicalClinic"
-              "@id": "https://deine-domain.tld/#org", // ← anpassen
-              url: "https://deine-domain.tld/", // ← anpassen
+              "@id": "https://www.hbot-berlin.de/#org", // ← anpassen
+              url: "https://www.hbot-berlin.de", // ← anpassen
               name: "HBOT Studio Berlin",
               description:
                 "Hyperbare Sauerstofftherapie (HBOT) in Berlin-Charlottenburg. Rejuvenation 90: 60 Sitzungen in 90 Tagen. Premium-Betreuung, flexible Zeiten & Biomarker.",
-              logo: "https://deine-domain.tld/logo.svg", // ← anpassen
-              image: "https://deine-domain.tld/og.jpg", // ← anpassen
+              logo: "https://www.hbot-berlin.de/logo.svg", // ← anpassen
+              image: "https://www.hbot-berlin.de/og.jpg", // ← anpassen
               address: {
                 "@type": "PostalAddress",
                 streetAddress: "Kaiserdamm XXX", // ← anpassen

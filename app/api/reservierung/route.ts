@@ -8,8 +8,8 @@ export const runtime = "nodejs";
 // ───────────────────────────── ENV
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const RESERVATION_TO = process.env.RESERVATION_TO ?? "hallo@hbot-berlin.de";
-const RESERVATION_FROM = process.env.RESERVATION_FROM ?? "onboarding@resend.dev"; // Admin-Mail-Absender
-const RESEND_FALLBACK_FROM = process.env.RESEND_FALLBACK_FROM ?? "onboarding@resend.dev"; // Nutzer-Bestätigung
+const RESERVATION_FROM = process.env.RESERVATION_FROM ?? "onboarding@resend.dev"; // Domain-aligned Absender (empfohlen)
+const RESEND_FALLBACK_FROM = process.env.RESEND_FALLBACK_FROM ?? "onboarding@resend.dev"; // Fallback, falls oben fehlt
 
 // ───────────────────────────── App-Rate-Limit: 5 req / 10 min / IP
 type Bucket = { first: number; count: number };
@@ -120,6 +120,7 @@ function isResend429(err: unknown): boolean {
 }
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+// ───────────────────────────── POST
 export async function POST(req: Request) {
   const ip = ipFromHeaders(req);
   if (!ratelimit(ip)) {
@@ -160,11 +161,15 @@ export async function POST(req: Request) {
 
   const resend = new Resend(RESEND_API_KEY);
 
+  // Absender: bevorzugt Domain-aligned aus RESERVATION_FROM, sonst Fallback
+  const brand = "HBOT Studio Berlin";
+  const fromAddress = RESERVATION_FROM || RESEND_FALLBACK_FROM;
+
   // Inhalte
   const subjectAdmin = "Neue Reservierung – Rejuvenation 90";
   const htmlAdmin = `
     <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial">
-      <h2>Neue Reservierung (Website)</h2>
+      <h2>${escapeHtml(brand)} – Neue Reservierung (Website)</h2>
       <p><strong>Name:</strong> ${escapeHtml(name)}</p>
       <p><strong>E-Mail:</strong> ${escapeHtml(email)}</p>
       <p><strong>Telefon:</strong> ${escapeHtml(phone ?? "")}</p>
@@ -176,7 +181,7 @@ export async function POST(req: Request) {
   `;
   const textAdmin = stripHtml(htmlAdmin);
 
-  const subjectUser = "Empfangsbestätigung – HBOT Praxis Charlottenburg";
+  const subjectUser = `${brand} – Empfangsbestätigung Ihrer Reservierung`;
   const htmlUser = `
     <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;line-height:1.5">
       <h2 style="margin:0 0 8px 0">Vielen Dank für Ihre Reservierung</h2>
@@ -191,7 +196,7 @@ export async function POST(req: Request) {
       ${message ? `<p><strong>Ihre Nachricht:</strong><br/>${escapeHtml(message).replace(/\n/g, "<br/>")}</p>` : ""}
       <hr style="border:none;border-top:1px solid #e5e7eb;margin:16px 0"/>
       <p style="font-size:12px;color:#64748b;margin:0">
-        Hinweis: Diese E-Mail wurde automatisch versendet. Bitte antworten Sie bei Rückfragen einfach auf diese Nachricht.
+        Hinweis: Diese E-Mail wurde automatisch versendet. Bei Rückfragen können Sie einfach auf diese Nachricht antworten.
       </p>
     </div>
   `;
@@ -200,18 +205,20 @@ export async function POST(req: Request) {
   // E-Mail-Optionen als normale Objekte (kein readonly)
   type SendOpts = Parameters<typeof resend.emails.send>[0];
 
+  // ADMIN → replyTo = Nutzer (damit Antworten direkt zurückgehen)
   const adminOptions: SendOpts = {
-    from: RESERVATION_FROM,
-    to: RESERVATION_TO,      // string erlaubt
+    from: fromAddress,
+    to: RESERVATION_TO,
     replyTo: email,
     subject: subjectAdmin,
     html: htmlAdmin,
     text: textAdmin,
   };
 
+  // USER → replyTo = Studio (RESERVATION_TO)
   const userOptions: SendOpts = {
-    from: `HBOT Praxis <${RESEND_FALLBACK_FROM}>`,
-    to: email,               // string erlaubt
+    from: fromAddress,
+    to: email,
     replyTo: RESERVATION_TO,
     subject: subjectUser,
     html: htmlUser,
@@ -232,7 +239,7 @@ export async function POST(req: Request) {
   const batchRes = await sendBatchWithRetry();
 
   if (batchRes?.error) {
-    // Letzter Fallback: nur Admin-Mail (Lead sicherstellen)
+    // Fallback: Mindestens Admin-Mail zustellen, damit kein Lead verloren geht
     console.error("Resend batch error:", batchRes.error);
     const adminOnly = await resend.emails.send(adminOptions);
     if (adminOnly.error) {
@@ -249,7 +256,7 @@ export async function POST(req: Request) {
     });
   }
 
-  // ------ IDs sicher extrahieren (ohne Index-Ann. auf unbekanntem Typ)
+  // ------ IDs sicher extrahieren
   function hasId(v: unknown): v is { id: string } {
     return typeof v === "object" && v !== null && typeof (v as { id?: unknown }).id === "string";
   }
@@ -279,7 +286,8 @@ export async function GET() {
     route: "/api/reservierung",
     hasResendKey: !!process.env.RESEND_API_KEY,
     fromAdmin: process.env.RESERVATION_FROM ?? null,
-    fromUser: process.env.RESEND_FALLBACK_FROM ?? "onboarding@resend.dev",
+    fromUserFallback: process.env.RESEND_FALLBACK_FROM ?? "onboarding@resend.dev",
+    to: process.env.RESERVATION_TO ?? null,
     env: process.env.VERCEL_ENV || "unknown",
   });
 }
