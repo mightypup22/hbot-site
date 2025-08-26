@@ -93,9 +93,17 @@ const playfair = Playfair_Display({
   display: "swap"
 });
 
+/** Neu: Sora nur fürs Menü */
+const sora = Sora({
+  subsets: ["latin"],
+  weight: ["500", "600"],
+  variable: "--font-nav",
+  display: "swap"
+});
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="de" className={`${plusJakarta.variable} ${playfair.variable}`}>
+    <html lang="de" className={`${plusJakarta.variable} ${playfair.variable} ${sora.variable}`}>
       <body className="min-h-screen bg-white text-slate-900">
         {/* JSON-LD siteweit */}
         <Script

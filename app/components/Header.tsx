@@ -23,11 +23,11 @@ export default function Header() {
         {/* Logo + Wortmarke */}
         <Link
           href="/"
-          // ⬇️ HIER ABSTAND LOGO↔WORTMARKE ANPASSEN: nutze z.B. gap-1, gap-2, gap-3 ...
-          className="flex items-center gap-3"
+          // ⬇️ LOGO↔WORTMARKE-ABSTAND: gap-2 kompakter, gap-3 Standard, gap-4 luftiger
+          className="flex items-center gap-2"
         >
-          {/* LOGO-Größe: Container steuert die sichtbare Größe, Header bleibt h-16 */}
-          {/*   -> h-10/w-10 (kleiner), h-12/w-12 (größer), h-14/w-14 (noch größer) */}
+          {/* ⬇️ LOGO-GRÖSSE: h-/w- ändern (Header bleibt h-16) */}
+          {/* z.B. h-10 w-10 (kleiner), h-12 w-12 (größer), h-14 w-14 (max. ohne Header zu sprengen) */}
           <div className="relative h-12 w-12 md:h-12 md:w-12">
             <Image
               src="/logo.svg"
@@ -47,13 +47,13 @@ export default function Header() {
         </Link>
 
         {/* Desktop Nav */}
-        <nav className="hidden md:flex items-center gap-6 text-sm">
-          <Link href="/#programm" className="navlink hover:text-slate-700">Programm</Link>
-          <Link href="/#philosophie" className="navlink hover:text-slate-700">Philosophie</Link>
-          <Link href="/#was-ist-hbot" className="navlink hover:text-slate-700">HBOT</Link>
-          <Link href="/#evidenz" className="navlink hover:text-slate-700">Evidenz</Link>
-          <Link href="/#biomarker" className="navlink hover:text-slate-700">Biomarker</Link>
-          <Link href="/#preise" className="navlink hover:text-slate-700">Preis</Link>
+        <nav className="hidden md:flex items-center gap-6 text-[13px] md:text-sm tracking-wide font-medium text-slate-700/90 font-nav">
+          <Link href="/#programm" className="navlink transition-colors hover:text-slate-900">Programm</Link>
+          <Link href="/#philosophie" className="navlink transition-colors hover:text-slate-900">Philosophie</Link>
+          <Link href="/#was-ist-hbot" className="navlink transition-colors hover:text-slate-900">HBOT</Link>
+          <Link href="/#evidenz" className="navlink transition-colors hover:text-slate-900">Evidenz</Link>
+          <Link href="/#biomarker" className="navlink transition-colors hover:text-slate-900">Biomarker</Link>
+          <Link href="/#preise" className="navlink transition-colors hover:text-slate-900">Preis</Link>
           <Link href="/#kontakt" className="px-3 py-1.5 rounded-xl btn-brand">Reservieren</Link>
         </nav>
 
@@ -72,7 +72,7 @@ export default function Header() {
 
       {/* Mobile Panel – zentriert */}
       <div className={`md:hidden border-t border-slate-200 bg-white ${open ? "block" : "hidden"} min-h-[40vh]`}>
-        <nav className="px-4 py-6 text-sm w-full h-full grid place-items-center">
+        <nav className="px-4 py-6 text-sm w-full h-full grid place-items-center font-nav">
           <div className="flex flex-col items-center gap-4">
             <Link href="/#programm" onClick={() => setOpen(false)} className="py-2">Programm</Link>
             <Link href="/#philosophie" onClick={() => setOpen(false)} className="py-2">Philosophie</Link>

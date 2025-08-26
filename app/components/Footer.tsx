@@ -11,7 +11,7 @@ export default function Footer() {
             (genaue Adresse folgt)<br />
             Berlin-Charlottenburg<br />
             Tel: 030&nbsp;1234567<br />
-            E-Mail: info@hbot-berlin.de
+            E-Mail: studio@hbot-berlin.de
           </p>
         </div>
         <div>

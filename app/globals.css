@@ -1,10 +1,12 @@
 @import "tailwindcss";
 
+/* ===== Farb-/Font-Basis ===== */
 :root {
   --background: #ffffff;
   --foreground: #171717;
 }
 
+/* Tailwind v4 theme mapping (optional, lassen wir intakt) */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -22,9 +24,11 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  /* WICHTIG: Hauptschrift aus next/font (Plus Jakarta) nutzen */
+  font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, "Apple Color Emoji", "Segoe UI Emoji";
 }
 
+/* ===== Brand-Design-Variablen ===== */
 :root{
   --brand:#0b1220;
   --ink:#0a0f1a;
@@ -33,14 +37,17 @@ body {
   --ring:#d8dce5;
 }
 
-/* Headline-Font-Utility */
-.display { font-family: var(--font-display) }
+/* ===== Typo-Utilities ===== */
+.display { font-family: var(--font-display), Georgia, serif; }
 
-/* Brand-Buttons */
+/* Menü-Font (Sora) – kommt aus layout.tsx via --font-nav */
+.font-nav { font-family: var(--font-nav), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, "Apple Color Emoji", "Segoe UI Emoji"; }
+
+/* ===== Buttons ===== */
 .btn-brand{ background: var(--brand); color: #fff; }
 .btn-brand:hover{ filter: brightness(1.05); }
 
-/* Dezente Premium-Unterstreichung beim Hover */
+/* ===== Dezente Premium-Unterstreichung beim Hover (Desktop-Navi) ===== */
 .navlink{ position: relative; display: inline-block; padding-bottom: 4px; }
 .navlink::after{
   content:""; position:absolute; left:0; right:0; bottom:0; height:2px;
@@ -48,3 +55,29 @@ body {
   transition: transform .25s ease;
 }
 .navlink:hover::after{ transform: scaleX(1); }
+
+/* ===== Anchor Offset unter Sticky-Header =====
+   Stellschrauben: --header-h & --anchor-offset */
+:root {
+  --header-h: 64px; /* Header-Höhe mobile (h-16) */
+  --anchor-offset: calc(var(--header-h) + 16px);
+}
+
+@media (min-width: 768px) {
+  :root {
+    --header-h: 72px; /* falls du h-16 lässt, kannst du 64px belassen; 72 macht etwas mehr Puffer */
+    --anchor-offset: calc(var(--header-h) + 18px);
+  }
+}
+@media (min-width: 1280px) {
+  :root {
+    --header-h: 80px;
+    --anchor-offset: calc(var(--header-h) + 20px);
+  }
+}
+
+/* weiches Scrollen zu #ankern */
+html { scroll-behavior: smooth; }
+
+/* Offset für alle Sections mit ID (wirkt bei Klick auf Menü-Links) */
+main section[id] { scroll-margin-top: var(--anchor-offset); }
